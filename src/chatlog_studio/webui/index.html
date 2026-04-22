@@ -1,0 +1,237 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="theme-color" content="#f3efe7" />
+    <title>Chatlog Archive Desk</title>
+    <link rel="icon" href="/favicon.svg" type="image/svg+xml" />
+    <link rel="stylesheet" href="/styles.css" />
+  </head>
+  <body>
+    <div class="ambient ambient-a"></div>
+    <div class="ambient ambient-b"></div>
+    <div class="noise-layer"></div>
+
+    <div class="app-shell">
+      <aside class="sidebar panel reveal">
+        <div class="sidebar-shell">
+          <header class="sidebar-hero">
+            <div class="sidebar-brand">
+              <span class="eyebrow">Private archive workstation</span>
+              <h1>Chatlog Archive Desk</h1>
+              <p>
+                像翻阅编辑台上的档案卡一样查看你自己的微信记录。准备本地数据库后，就能在最近会话、联系人与媒体索引之间快速切换。
+              </p>
+            </div>
+
+            <div class="sidebar-meta" id="sidebar-meta">
+              <div class="meta-pill">
+                <span class="meta-label">Weixin</span>
+                <strong id="weixin-state">Checking</strong>
+              </div>
+              <div class="meta-pill">
+                <span class="meta-label">Ready</span>
+                <strong id="ready-state">No</strong>
+              </div>
+            </div>
+          </header>
+
+          <section class="sidebar-controls">
+            <div class="section-heading">
+              <span class="eyebrow">Archive Control</span>
+              <p>先完成准备，再浏览会话。低频设置和缓存维护已折叠，避免干扰当前主任务。</p>
+            </div>
+
+            <div class="action-stack">
+              <button class="primary-button" id="prepare-button" type="button">
+                使用本地缓存 / 准备数据
+              </button>
+            </div>
+
+            <div class="progress-card" id="progress-card" hidden>
+              <div class="progress-row">
+                <span id="progress-label">等待任务开始</span>
+                <strong id="progress-percent">0%</strong>
+              </div>
+              <div
+                class="progress-track"
+                role="progressbar"
+                aria-label="准备数据进度"
+                aria-valuemin="0"
+                aria-valuemax="100"
+                aria-valuenow="0"
+              >
+                <span id="progress-bar"></span>
+              </div>
+            </div>
+
+            <div class="control-feedback" id="control-feedback" hidden></div>
+
+            <div class="control-grid">
+              <label class="field">
+                <span>账号</span>
+                <select id="account-select" aria-label="Select account"></select>
+              </label>
+              <label class="field">
+                <span>搜索会话</span>
+                <input
+                  id="search-input"
+                  type="search"
+                  placeholder="名字、备注、wxid、摘要"
+                  autocomplete="off"
+                />
+              </label>
+            </div>
+
+            <details class="advanced-panel" id="advanced-panel">
+              <summary>高级设置与缓存维护</summary>
+              <div class="advanced-body">
+                <div class="output-config">
+                  <div class="section-heading compact">
+                    <span class="eyebrow">Output Root</span>
+                    <p>统一管理 `decrypted`、`exports` 和 `media`。切换后会按账号自动建子目录。</p>
+                  </div>
+                  <label class="field">
+                    <span>输出根目录</span>
+                    <input
+                      id="output-base-input"
+                      type="text"
+                      placeholder="例如 D:\\ChatlogArchive"
+                      autocomplete="off"
+                    />
+                  </label>
+                  <div class="path-actions">
+                    <button class="ghost-button compact-button" id="browse-output-button" type="button">
+                      选择文件夹
+                    </button>
+                    <button class="ghost-button compact-button" id="apply-output-button" type="button">
+                      应用目录
+                    </button>
+                    <button class="ghost-button compact-button" id="reset-output-button" type="button">
+                      恢复默认
+                    </button>
+                  </div>
+                  <p class="field-note" id="output-base-note">
+                    未指定时使用默认本地缓存目录；准备数据、媒体缓存和文本导出会放在同一个根目录下。
+                  </p>
+                </div>
+
+                <div class="danger-panel">
+                  <div class="section-heading compact">
+                    <span class="eyebrow">Cache Reset</span>
+                    <p>仅删除本工具生成的缓存和解密副本，不影响原始微信数据库。</p>
+                  </div>
+                  <button class="ghost-button danger-lite" id="force-prepare-button" type="button">
+                    清空缓存并重新识别
+                  </button>
+                </div>
+              </div>
+            </details>
+          </section>
+
+          <section class="sidebar-results">
+            <div class="section-heading compact">
+              <span class="eyebrow">Archive Navigator</span>
+              <p id="search-status">最近会话优先显示，搜索时会把匹配会话和联系人分组呈现，方便快速定位。</p>
+            </div>
+            <div class="sidebar-list" id="sidebar-list" aria-live="polite"></div>
+          </section>
+        </div>
+      </aside>
+
+      <main class="workspace">
+        <header class="workspace-top panel reveal reveal-delay-1">
+          <div class="headline-block">
+            <span class="eyebrow">Own your desktop archive</span>
+            <h2>把微信聊天整理成一张可翻阅、可检索、可导出的本地档案台</h2>
+            <p id="status-note">
+              打开微信并保持登录后，点击 Prepare Local Data。所有数据处理都留在这台机器上。
+            </p>
+          </div>
+          <div class="status-grid">
+            <article class="status-card">
+              <span class="status-label">Contacts</span>
+              <strong id="contacts-count">0</strong>
+            </article>
+            <article class="status-card">
+              <span class="status-label">Sessions</span>
+              <strong id="sessions-count">0</strong>
+            </article>
+            <article class="status-card">
+              <span class="status-label">Exports</span>
+              <strong id="exports-count">0</strong>
+            </article>
+            <article class="status-card">
+              <span class="status-label">Decrypted DBs</span>
+              <strong id="db-count">0</strong>
+            </article>
+          </div>
+        </header>
+
+        <div class="workspace-main">
+          <section class="conversation panel reveal reveal-delay-2">
+            <div class="conversation-header">
+              <div>
+                <span class="eyebrow">Conversation</span>
+                <h3 id="conversation-title">Select a chat</h3>
+                <p id="conversation-subtitle">准备完成后，从左侧选择一个会话、联系人或搜索结果。</p>
+              </div>
+              <div class="conversation-actions">
+                <button id="load-full-button" class="ghost-button" type="button" hidden>
+                  加载更早消息
+                </button>
+                <button id="export-button" class="ghost-button" type="button" disabled>
+                  导出当前会话
+                </button>
+              </div>
+            </div>
+
+            <div class="conversation-banner" id="conversation-banner">
+              最近 400 条消息会优先载入，完整时间线可按需展开，避免首次打开卡顿。
+            </div>
+
+            <div class="message-stream" id="message-stream">
+              <section class="empty-state">
+                <span class="empty-kicker">Ready when you are</span>
+                <h4>先准备本地数据，再开始浏览聊天记录。</h4>
+                <p>
+                  这个页面不会上传聊天内容，也不会改动原始加密数据库。它只是把你本机的解密结果做成一个更顺手的界面。
+                </p>
+              </section>
+            </div>
+          </section>
+
+          <aside class="inspector panel reveal reveal-delay-2" id="inspector-panel">
+            <div class="inspector-section">
+              <span class="eyebrow">Inspector</span>
+              <h3 id="inspector-title">等待选择会话</h3>
+              <p id="inspector-subtitle">这里会显示当前会话的媒体、链接和联系人信息。</p>
+            </div>
+
+            <div class="inspector-section inspector-stats" id="inspector-stats"></div>
+
+            <div class="inspector-section">
+              <div class="inspector-section-head">
+                <span class="eyebrow">Media shelf</span>
+                <strong id="inspector-media-label">当前未载入媒体</strong>
+              </div>
+              <div class="inspector-media-grid" id="inspector-media-grid"></div>
+            </div>
+
+            <div class="inspector-section">
+              <div class="inspector-section-head">
+                <span class="eyebrow">Link index</span>
+                <strong id="inspector-link-label">当前未载入链接</strong>
+              </div>
+              <div class="inspector-link-list" id="inspector-link-list"></div>
+            </div>
+          </aside>
+        </div>
+      </main>
+    </div>
+
+    <div class="toast" id="toast" role="status" aria-live="polite"></div>
+    <script type="module" src="/app.js"></script>
+  </body>
+</html>

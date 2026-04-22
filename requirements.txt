@@ -1,0 +1,2 @@
+wdecipher==0.0.1
+pycryptodomex==3.23.0

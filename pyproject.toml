@@ -1,0 +1,32 @@
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "chatlog-studio"
+version = "0.1.0"
+description = "Local Windows tool for exploring and exporting your own WeChat desktop chat data."
+readme = "README.md"
+requires-python = ">=3.10"
+license = { text = "MIT" }
+authors = [
+  { name = "Open Source Maintainers" }
+]
+dependencies = [
+  "wdecipher==0.0.1",
+  "pycryptodomex==3.23.0",
+]
+
+[project.scripts]
+chatlog-studio = "chatlog_studio.visual:main"
+chatlog-studio-cli = "chatlog_studio.cli:main"
+wechat4-key-probe = "chatlog_studio.wechat4_key_probe:main"
+
+[tool.setuptools]
+package-dir = {"" = "src"}
+
+[tool.setuptools.package-data]
+chatlog_studio = ["webui/*"]
+
+[tool.setuptools.packages.find]
+where = ["src"]
