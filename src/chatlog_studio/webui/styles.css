@@ -294,6 +294,63 @@ body::after {
   color: #7b3717;
 }
 
+.language-switch {
+  display: grid;
+  gap: 0.55rem;
+}
+
+.language-switch-label {
+  color: var(--text-soft);
+  font-family: var(--font-ui);
+  font-size: 0.72rem;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+}
+
+.language-switch-buttons {
+  display: inline-grid;
+  grid-template-columns: repeat(2, minmax(0, auto));
+  gap: 0.45rem;
+  justify-content: start;
+}
+
+.locale-button {
+  min-width: 5.5rem;
+  padding: 0.7rem 0.95rem;
+  border: 1px solid rgba(48, 39, 30, 0.1);
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.72);
+  color: var(--text-soft);
+  cursor: pointer;
+  font-family: var(--font-ui);
+  font-size: 0.76rem;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  transition:
+    border-color 180ms ease,
+    background 180ms ease,
+    color 180ms ease,
+    transform 180ms ease,
+    box-shadow 180ms ease;
+}
+
+.locale-button:hover {
+  transform: translateY(-1px);
+}
+
+.locale-button.active {
+  border-color: rgba(160, 79, 38, 0.28);
+  background: linear-gradient(135deg, rgba(160, 79, 38, 0.14), rgba(187, 140, 50, 0.12));
+  color: var(--ink);
+  box-shadow: 0 10px 20px rgba(160, 79, 38, 0.1);
+}
+
+.locale-button:focus-visible {
+  outline: none;
+  border-color: rgba(29, 95, 91, 0.45);
+  box-shadow: 0 0 0 4px rgba(29, 95, 91, 0.14);
+}
+
 .control-grid {
   display: grid;
   gap: 0.85rem;
@@ -1236,6 +1293,10 @@ body::after {
   .inspector-media-grid,
   .inspector-stats {
     grid-template-columns: 1fr;
+  }
+
+  .language-switch-buttons {
+    grid-template-columns: 1fr 1fr;
   }
 
   .message-bubble {

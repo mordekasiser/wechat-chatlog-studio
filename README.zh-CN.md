@@ -1,34 +1,30 @@
-# Chatlog Studio
+# 聊天档案台
 
-[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
-[![Python 3.10+](https://img.shields.io/badge/Python-3.10%2B-blue.svg)](https://python.org)
-[![Platform: Windows](https://img.shields.io/badge/Platform-Windows-0078D4.svg)](#使用前提)
+这是一款在本地电脑上运行、目前支持 Windows 的工具，用于浏览和导出你自己的微信桌面版聊天数据。
 
-本地 Windows 工具，用于浏览和导出你自己的微信桌面版聊天数据。
-
-[快速开始](#快速开始) · [使用方式](#使用方式) · [项目结构](#项目结构) · [English](README.md)
+[快速开始](#快速开始) · [使用方式](#使用方式) · [项目结构](#项目结构) · [英文说明](README.md)
 
 ---
 
 ## 为什么做这个项目
 
-很多新的 AI Skill 项目开始尝试基于聊天记录、照片和个人描述来还原一个人的说话方式与记忆片段，但微信和 QQ 的数据并不容易整理出来，手动复制粘贴也很低效。
+很多新的智能体技能项目开始尝试基于聊天记录、照片和个人描述来还原一个人的说话方式与记忆片段，但微信和 QQ 的数据并不容易整理出来，手动复制粘贴也很低效。
 
-Chatlog Studio 的目标是把这些本地聊天数据更方便地导出、整理和维护。它既可以作为后续 AI Skill 数据准备的一环，也可以帮助用户保存自己珍视的对话记录，避免因为设备、迁移或误操作而丢失重要聊天。
+聊天档案台的目标是把这些本地聊天数据更方便地导出、整理和维护。它既可以作为后续智能体技能数据准备的一环，也可以帮助用户保存自己珍视的对话记录，避免因为设备、迁移或误操作而丢失重要聊天。
 
 ## 这是什么
 
-Chatlog Studio 提供：
+聊天档案台提供：
 - 一个本地网页界面，用浏览器查看聊天记录
 - 一个命令行工具，用来准备数据、列出会话和导出聊天
-- 一个底层探测工具，用于 Windows 微信桌面数据库检查
+- 一个底层探测工具，用于检查微信桌面版数据库
 
 它不是公网在线网站。
-程序运行在你自己的 Windows 电脑上，启动后会在本机打开浏览器页面。
+程序运行在你自己的电脑上，启动后会在本机打开浏览器页面。
 
 ## 使用前提
 
-- Windows
+- 当前仅支持 Windows
 - Python 3.10 及以上
 - 已安装并登录微信桌面版
 - 本地微信数据位于某个 `xwechat_files` 根目录下
@@ -41,7 +37,7 @@ Chatlog Studio 提供：
 
 ## 快速开始
 
-在项目根目录打开 PowerShell：
+在项目根目录打开命令行终端：
 
 ```powershell
 python -m pip install .
@@ -50,9 +46,9 @@ chatlog-studio
 
 然后：
 1. 等浏览器自动打开
-2. 点击 `使用本地缓存 / 准备数据`
+2. 在网页界面中准备或载入本地数据
 3. 在左侧选择一个会话
-4. 需要导出时点击 `导出当前会话`
+4. 需要时导出当前会话
 
 ## 使用方式
 
@@ -65,6 +61,7 @@ chatlog-studio
 ```
 
 网页界面现在支持：
+- 在中文和英文界面之间切换
 - 自动发现常见的 `xwechat_files` 目录
 - 自动发现失败时手动选择微信文件根目录
 - 手动切换导出输出目录
@@ -80,7 +77,7 @@ chatlog-studio-cli --help
 示例：
 
 ```powershell
-chatlog-studio-cli --account-dir "C:\Users\you\Documents\xwechat_files" list
+chatlog-studio-cli --account-dir "%USERPROFILE%\Documents\xwechat_files" list
 chatlog-studio-cli --account-dir "D:\WeChatData\xwechat_files" prepare --force
 chatlog-studio-cli --account-dir "D:\WeChatData\xwechat_files\wxid_xxx" export "联系人名"
 ```
@@ -185,7 +182,7 @@ scripts\chatlog.bat install --dev
 
 ## 贡献说明
 
-欢迎提交 issue 和 PR。开发环境、验证步骤和仓库卫生要求见 [CONTRIBUTING.md](CONTRIBUTING.md)。
+欢迎提交问题反馈和合并请求。开发环境、验证步骤和仓库卫生要求见 [CONTRIBUTING.md](CONTRIBUTING.md)。
 
 本项目只面向用户在自己电脑上浏览和导出自己的微信桌面版本地数据。
 
@@ -194,7 +191,7 @@ scripts\chatlog.bat install --dev
 - 优化微信聊天导出的界面和体验
 - 修复不同微信版本和数据结构带来的兼容问题
 - 增加 QQ 聊天数据导出的适配
-- 改进导出格式，方便后续整理、检索和作为 AI Skill 数据源
+- 改进导出格式，方便后续整理、检索和作为智能体技能数据源
 
 ## 项目结构
 
@@ -212,4 +209,4 @@ scripts\chatlog.bat install --dev
 
 ## 开源协议
 
-本项目使用 MIT License，详见 [LICENSE](LICENSE)。
+本项目使用 MIT 许可协议，详见 [LICENSE](LICENSE)。

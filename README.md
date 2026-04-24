@@ -6,7 +6,7 @@
 
 Local Windows tool for browsing and exporting your own WeChat desktop chat data.
 
-[Quick Start](#quick-start) · [Usage](#usage) · [Project Layout](#project-layout) · [中文说明](README.zh-CN.md)
+[Quick Start](#quick-start) · [Usage](#usage) · [Project Layout](#project-layout) · [Chinese Guide](README.zh-CN.md)
 
 ---
 
@@ -50,9 +50,9 @@ chatlog-studio
 
 Then:
 1. wait for the browser to open
-2. click `使用本地缓存 / 准备数据`
+2. prepare or load local data from the Web UI
 3. choose a chat on the left
-4. click `导出当前会话` if you want to export it
+4. export the current conversation if needed
 
 ## Usage
 
@@ -65,6 +65,7 @@ chatlog-studio
 ```
 
 Inside the Web UI you can:
+- switch the interface language between English and Chinese
 - keep automatic discovery for common `xwechat_files` locations
 - manually choose the WeChat data root when auto-discovery fails
 - choose a custom output directory for decrypted data, exports, and extracted media
@@ -80,7 +81,7 @@ chatlog-studio-cli --help
 Examples:
 
 ```powershell
-chatlog-studio-cli --account-dir "C:\Users\you\Documents\xwechat_files" list
+chatlog-studio-cli --account-dir "%USERPROFILE%\Documents\xwechat_files" list
 chatlog-studio-cli --account-dir "D:\WeChatData\xwechat_files" prepare --force
 chatlog-studio-cli --account-dir "D:\WeChatData\xwechat_files\wxid_xxx" export "Contact Name"
 ```

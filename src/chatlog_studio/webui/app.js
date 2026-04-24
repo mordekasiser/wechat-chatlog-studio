@@ -1,3 +1,12 @@
+import {
+  getDateLocale,
+  getNumberLocale,
+  localizeMessage,
+  localizeTaskMessage,
+  setupLanguageSwitcher,
+  t,
+} from "./i18n.js";
+
 const state = {
   status: null,
   sessions: [],
@@ -14,6 +23,7 @@ const state = {
   sidebarRequestId: 0,
   chatRequestId: 0,
   toastTimer: null,
+  toastMessage: null,
   accountDirDraft: "",
   outputBaseDraft: "",
   applyingAccountDir: false,
@@ -30,6 +40,7 @@ const elements = {
   progressLabel: document.querySelector("#progress-label"),
   progressPercent: document.querySelector("#progress-percent"),
   progressBar: document.querySelector("#progress-bar"),
+  progressTrack: document.querySelector(".progress-track"),
   controlFeedback: document.querySelector("#control-feedback"),
   accountDirInput: document.querySelector("#account-dir-input"),
   accountDirNote: document.querySelector("#account-dir-note"),
@@ -69,11 +80,24 @@ const elements = {
 };
 
 document.addEventListener("DOMContentLoaded", () => {
+  setupLanguageSwitcher(() => {
+    rerenderForLocale();
+  });
   wireEvents();
+  rerenderForLocale();
   bootstrap().catch((error) => {
-    showToast(error.message || "Failed to start Chatlog Studio.");
+    showToast(resolveErrorMessage(error, t("genericStartFailed")));
   });
 });
+
+function rerenderForLocale() {
+  renderStatus();
+  renderControlFeedback();
+  renderToast();
+  renderSidebar();
+  renderConversation();
+  renderInspector();
+}
 
 function invalidateChatContext() {
   state.chatRequestId += 1;
@@ -84,93 +108,93 @@ function invalidateChatContext() {
 }
 
 function wireEvents() {
-  elements.prepareButton.addEventListener("click", () => {
-    prepareLocalData(false).catch((error) => showToast(error.message));
+  elements.prepareButton?.addEventListener("click", () => {
+    prepareLocalData(false).catch((error) => showToast(resolveErrorMessage(error, t("prepareFailed"))));
   });
 
-  elements.forcePrepareButton.addEventListener("click", () => {
-    const confirmed = window.confirm("这会清空本工具生成的解密缓存和图片缓存，然后从本机微信数据重新识别。原始微信数据库不会被修改。继续吗？");
+  elements.forcePrepareButton?.addEventListener("click", () => {
+    const confirmed = window.confirm(t("confirmForcePrepare"));
     if (!confirmed) {
       return;
     }
-    prepareLocalData(true).catch((error) => showToast(error.message));
+    prepareLocalData(true).catch((error) => showToast(resolveErrorMessage(error, t("prepareFailed"))));
   });
 
-  elements.accountDirInput.addEventListener("input", (event) => {
+  elements.accountDirInput?.addEventListener("input", (event) => {
     state.accountDirDraft = event.target.value;
     renderAccountDirConfig();
   });
 
-  elements.accountDirInput.addEventListener("keydown", (event) => {
+  elements.accountDirInput?.addEventListener("keydown", (event) => {
     if (event.key !== "Enter") {
       return;
     }
     event.preventDefault();
-    applyWechatRoot(state.accountDirDraft).catch((error) => showToast(error.message));
+    applyWechatRoot(state.accountDirDraft).catch((error) => showToast(resolveErrorMessage(error, t("switchAccountFailed"))));
   });
 
-  elements.browseAccountButton.addEventListener("click", () => {
-    browseWechatRoot().catch((error) => showToast(error.message));
+  elements.browseAccountButton?.addEventListener("click", () => {
+    browseWechatRoot().catch((error) => showToast(resolveErrorMessage(error, t("switchAccountFailed"))));
   });
 
-  elements.applyAccountButton.addEventListener("click", () => {
-    applyWechatRoot(state.accountDirDraft).catch((error) => showToast(error.message));
+  elements.applyAccountButton?.addEventListener("click", () => {
+    applyWechatRoot(state.accountDirDraft).catch((error) => showToast(resolveErrorMessage(error, t("switchAccountFailed"))));
   });
 
-  elements.resetAccountButton.addEventListener("click", () => {
-    applyWechatRoot("").catch((error) => showToast(error.message));
+  elements.resetAccountButton?.addEventListener("click", () => {
+    applyWechatRoot("").catch((error) => showToast(resolveErrorMessage(error, t("switchAccountFailed"))));
   });
 
-  elements.outputBaseInput.addEventListener("input", (event) => {
+  elements.outputBaseInput?.addEventListener("input", (event) => {
     state.outputBaseDraft = event.target.value;
     renderOutputBaseConfig();
   });
 
-  elements.outputBaseInput.addEventListener("keydown", (event) => {
+  elements.outputBaseInput?.addEventListener("keydown", (event) => {
     if (event.key !== "Enter") {
       return;
     }
     event.preventDefault();
-    applyOutputBase(state.outputBaseDraft).catch((error) => showToast(error.message));
+    applyOutputBase(state.outputBaseDraft).catch((error) => showToast(resolveErrorMessage(error, t("updatingOutputRoot"))));
   });
 
-  elements.browseOutputButton.addEventListener("click", () => {
-    browseOutputBase().catch((error) => showToast(error.message));
+  elements.browseOutputButton?.addEventListener("click", () => {
+    browseOutputBase().catch((error) => showToast(resolveErrorMessage(error, t("updatingOutputRoot"))));
   });
 
-  elements.applyOutputButton.addEventListener("click", () => {
-    applyOutputBase(state.outputBaseDraft).catch((error) => showToast(error.message));
+  elements.applyOutputButton?.addEventListener("click", () => {
+    applyOutputBase(state.outputBaseDraft).catch((error) => showToast(resolveErrorMessage(error, t("updatingOutputRoot"))));
   });
 
-  elements.resetOutputButton.addEventListener("click", () => {
-    applyOutputBase("").catch((error) => showToast(error.message));
+  elements.resetOutputButton?.addEventListener("click", () => {
+    applyOutputBase("").catch((error) => showToast(resolveErrorMessage(error, t("updatingOutputRoot"))));
   });
 
-  elements.accountSelect.addEventListener("change", async (event) => {
+  elements.accountSelect?.addEventListener("change", async (event) => {
     try {
       state.selectedAccountId = event.target.value || null;
       invalidateChatContext();
-      setControlFeedback("正在切换账号上下文…", "info");
+      setControlFeedbackKey("switchingAccount", "info");
       await refreshStatus();
       await refreshSidebar();
       await loadBestInitialChat();
       clearControlFeedback();
     } catch (error) {
-      setControlFeedback(error.message || "切换账号失败", "error");
-      showToast(error.message || "切换账号失败");
+      setControlFeedback(resolveErrorMessage(error, t("switchAccountFailed")), "error");
+      showToast(resolveErrorMessage(error, t("switchAccountFailed")));
     }
   });
 
   let searchTimer = null;
-  elements.searchInput.addEventListener("input", (event) => {
+  elements.searchInput?.addEventListener("input", (event) => {
     window.clearTimeout(searchTimer);
     state.query = event.target.value.trim();
     searchTimer = window.setTimeout(() => {
-      refreshSidebar().catch((error) => showToast(error.message));
+      refreshSidebar().catch((error) => showToast(resolveErrorMessage(error)));
     }, 180);
   });
 
-  elements.sidebarList.addEventListener("click", (event) => {
+  elements.sidebarList?.addEventListener("click", (event) => {
     const trigger = event.target.closest("[data-chat-username]");
     if (!trigger) {
       return;
@@ -180,24 +204,24 @@ function wireEvents() {
       return;
     }
     state.selectedChat = username;
-    loadChat(username, false).catch((error) => showToast(error.message));
+    loadChat(username, false).catch((error) => showToast(resolveErrorMessage(error)));
   });
 
-  elements.exportButton.addEventListener("click", () => {
+  elements.exportButton?.addEventListener("click", () => {
     if (!state.selectedChat) {
       return;
     }
-    exportCurrentChat().catch((error) => showToast(error.message));
+    exportCurrentChat().catch((error) => showToast(resolveErrorMessage(error)));
   });
 
-  elements.loadFullButton.addEventListener("click", () => {
+  elements.loadFullButton?.addEventListener("click", () => {
     if (!state.selectedChat || !state.chat?.hasMore) {
       return;
     }
-    loadOlderMessages().catch((error) => showToast(error.message));
+    loadOlderMessages().catch((error) => showToast(resolveErrorMessage(error)));
   });
 
-  elements.inspectorMediaGrid.addEventListener("click", (event) => {
+  elements.inspectorMediaGrid?.addEventListener("click", (event) => {
     const trigger = event.target.closest("[data-jump-local-id]");
     if (!trigger) {
       return;
@@ -217,7 +241,7 @@ async function bootstrap() {
     await refreshSidebar();
     await loadBestInitialChat();
   } catch (error) {
-    setControlFeedback(error.message || "初始化失败", "error");
+    setControlFeedback(resolveErrorMessage(error, t("bootstrapFailed")), "error");
     throw error;
   }
 }
@@ -264,7 +288,7 @@ async function refreshSidebar() {
     return;
   }
 
-  state.sessions = sessionPayload.items || [];
+  state.sessions = (sessionPayload.items || []).filter(isBrowsableSession);
   state.contacts = dedupeContacts(contactPayload.items || [], state.sessions);
   renderSidebar();
   renderSearchStatus();
@@ -303,11 +327,11 @@ async function prepareLocalData(force) {
     current: 0,
     total: 1,
     percent: 0,
-    message: force ? "准备清空缓存并重新识别" : "正在检查本地缓存",
+    message: force ? t("prepareQueuedForce") : t("prepareQueuedNormal"),
   };
   renderActionState();
-  setControlFeedback(force ? "正在清理旧缓存并重建…" : "正在检查并准备本地缓存…", "info");
-  showToast(force ? "正在清空缓存并重新准备数据。" : "正在准备本地数据，已有缓存会直接复用。");
+  setControlFeedbackKey(force ? "preparingForceFeedback" : "preparingNormalFeedback", "info");
+  showToastKey(force ? "preparingForceToast" : "preparingNormalToast");
 
   try {
     const task = await fetchJson("/api/tasks/prepare", {
@@ -316,7 +340,7 @@ async function prepareLocalData(force) {
     });
     const payload = await pollTask(task.taskId);
     if (payload.status !== "succeeded") {
-      throw new Error(payload.error || "Prepare task failed.");
+      throw new Error(payload.error || "Preparation failed");
     }
 
     state.activeTask = payload;
@@ -325,17 +349,22 @@ async function prepareLocalData(force) {
     renderStatus();
     await refreshSidebar();
     await loadBestInitialChat();
-    setControlFeedback(payload.result.usedCache ? "已复用本地缓存，可直接浏览和导出。" : "准备完成，现在可以浏览会话和导出记录。", "success");
-    showToast(payload.result.usedCache ? "已复用本地缓存。" : `已准备 ${payload.result.decryptedFiles.length} 个数据库文件。`);
+    setControlFeedbackKey(payload.result.usedCache ? "prepareSucceededCache" : "prepareSucceededFresh", "success");
+    if (payload.result.usedCache) {
+      showToastKey("prepareToastCache");
+    } else {
+      showToastKey("prepareToastFresh", { count: payload.result.decryptedFiles.length });
+    }
   } catch (error) {
+    const message = resolveErrorMessage(error, t("prepareFailed"));
     state.activeTask = {
       ...(state.activeTask || {}),
       status: "failed",
-      message: error.message || "准备任务失败",
-      error: error.message || "准备任务失败",
+      message: message,
+      error: message,
     };
     renderActionState();
-    setControlFeedback(error.message || "准备任务失败", "error");
+    setControlFeedback(message, "error");
     throw error;
   } finally {
     state.preparing = false;
@@ -358,7 +387,7 @@ async function pollTask(taskId) {
 async function loadChat(username, full, options = {}) {
   const requestId = ++state.chatRequestId;
   const prepend = Boolean(options.prepend);
-  const previousHeight = elements.messageStream.scrollHeight;
+  const previousHeight = elements.messageStream?.scrollHeight || 0;
   state.chatError = null;
   if (!prepend) {
     state.chat = null;
@@ -397,10 +426,12 @@ async function loadChat(username, full, options = {}) {
     state.chatError = null;
     renderSidebar();
     renderConversation();
-    if (prepend) {
-      elements.messageStream.scrollTop = elements.messageStream.scrollHeight - previousHeight;
-    } else {
-      elements.messageStream.scrollTop = elements.messageStream.scrollHeight;
+    if (elements.messageStream) {
+      if (prepend) {
+        elements.messageStream.scrollTop = elements.messageStream.scrollHeight - previousHeight;
+      } else {
+        elements.messageStream.scrollTop = elements.messageStream.scrollHeight;
+      }
     }
   } catch (error) {
     if (requestId !== state.chatRequestId) {
@@ -410,7 +441,7 @@ async function loadChat(username, full, options = {}) {
     state.loadingOlder = false;
     if (!prepend) {
       state.chat = null;
-      state.chatError = error.message || "聊天内容载入失败";
+      state.chatError = resolveErrorMessage(error, t("chatLoadFailed"));
     }
     renderConversation();
     throw error;
@@ -437,8 +468,14 @@ async function exportCurrentChat() {
       query: state.selectedChat,
     }),
   });
-  setControlFeedback(`已导出 ${payload.contact.displayName}，文件位于 ${payload.outputPath}`, "success");
-  showToast(`Exported ${payload.contact.displayName} to ${payload.outputPath}`);
+  setControlFeedbackKey("exportSuccessFeedback", "success", {
+    name: payload.contact.displayName,
+    path: payload.outputPath,
+  });
+  showToastKey("exportSuccessToast", {
+    name: payload.contact.displayName,
+    path: payload.outputPath,
+  });
   await refreshStatus();
 }
 
@@ -467,12 +504,10 @@ async function applyWechatRoot(sourceDir) {
   state.applyingAccountDir = true;
   renderAccountDirConfig();
   try {
-    setControlFeedback(sourceDir ? "正在更新微信文件目录…" : "正在恢复自动发现…", "info");
+    setControlFeedbackKey(sourceDir ? "updatingWechatRoot" : "resettingWechatRoot", "info");
     const payload = await fetchJson("/api/wechat-root", {
       method: "POST",
-      body: JSON.stringify({
-        sourceDir,
-      }),
+      body: JSON.stringify({ sourceDir }),
     });
     state.status = payload;
     state.selectedAccountId = payload.selectedAccountId || null;
@@ -481,11 +516,13 @@ async function applyWechatRoot(sourceDir) {
     renderStatus();
     await refreshSidebar();
     await loadBestInitialChat();
-    const message = payload.manualSourcePath
-      ? `微信文件目录已切换到 ${payload.manualSourcePath}`
-      : "已恢复自动发现微信文件目录";
-    setControlFeedback(message, "success");
-    showToast(message);
+    if (payload.manualSourcePath) {
+      setControlFeedbackKey("wechatRootUpdated", "success", { path: payload.manualSourcePath });
+      showToastKey("wechatRootUpdated", { path: payload.manualSourcePath });
+    } else {
+      setControlFeedbackKey("wechatRootReset", "success");
+      showToastKey("wechatRootReset");
+    }
   } finally {
     state.applyingAccountDir = false;
     renderAccountDirConfig();
@@ -517,12 +554,10 @@ async function applyOutputBase(outputBase) {
   state.applyingOutputBase = true;
   renderOutputBaseConfig();
   try {
-    setControlFeedback("正在更新输出目录…", "info");
+    setControlFeedbackKey("updatingOutputRoot", "info");
     const payload = await fetchJson("/api/output-base", {
       method: "POST",
-      body: JSON.stringify({
-        outputBase,
-      }),
+      body: JSON.stringify({ outputBase }),
     });
     state.status = payload;
     state.selectedAccountId = payload.selectedAccountId || null;
@@ -531,8 +566,8 @@ async function applyOutputBase(outputBase) {
     renderStatus();
     await refreshSidebar();
     await loadBestInitialChat();
-    setControlFeedback(`输出目录已切换到 ${payload.outputBase}`, "success");
-    showToast(`输出目录已切换到 ${payload.outputBase}`);
+    setControlFeedbackKey("outputRootUpdated", "success", { path: payload.outputBase });
+    showToastKey("outputRootUpdated", { path: payload.outputBase });
   } finally {
     state.applyingOutputBase = false;
     renderOutputBaseConfig();
@@ -547,30 +582,57 @@ function renderStatus() {
   renderOutputBaseConfig();
   renderSearchStatus();
 
-  elements.weixinState.textContent = status?.hasRunningWeixin ? "已登录" : "未打开";
-  elements.readyState.textContent = status?.prepared ? "已就绪" : "待准备";
-  elements.contactsCount.textContent = formatNumber(stats.contacts || 0);
-  elements.sessionsCount.textContent = formatNumber(stats.sessions || 0);
-  elements.exportsCount.textContent = formatNumber(stats.exports || 0);
-  elements.dbCount.textContent = formatNumber(stats.decryptedFiles || 0);
-  elements.statusNote.textContent = buildStatusNote(status);
+  if (elements.weixinState) {
+    elements.weixinState.textContent = status?.hasRunningWeixin ? t("statusWeixinOn") : t("statusWeixinOff");
+  }
+  if (elements.readyState) {
+    elements.readyState.textContent = status?.prepared ? t("statusReadyOn") : t("statusReadyOff");
+  }
+  if (elements.contactsCount) {
+    elements.contactsCount.textContent = formatNumber(stats.contacts || 0);
+  }
+  if (elements.sessionsCount) {
+    elements.sessionsCount.textContent = formatNumber(stats.sessions || 0);
+  }
+  if (elements.exportsCount) {
+    elements.exportsCount.textContent = formatNumber(stats.exports || 0);
+  }
+  if (elements.dbCount) {
+    elements.dbCount.textContent = formatNumber(stats.decryptedFiles || 0);
+  }
+  if (elements.statusNote) {
+    elements.statusNote.textContent = buildStatusNote(status);
+  }
 
   renderAccountOptions();
 }
 
 function renderActionState() {
+  if (!elements.prepareButton || !elements.forcePrepareButton) {
+    return;
+  }
   elements.prepareButton.disabled = state.preparing;
   elements.forcePrepareButton.disabled = state.preparing;
-  elements.prepareButton.textContent = state.preparing ? "准备中..." : "使用本地缓存 / 准备数据";
+  elements.prepareButton.textContent = state.preparing ? t("prepareButtonBusy") : t("prepareButton");
+  elements.forcePrepareButton.textContent = t("forcePrepareButton");
+
   const task = state.activeTask;
   const visibleTask = task && (task.status === "running" || task.status === "queued" || task.status === "failed");
-  elements.progressCard.hidden = !visibleTask;
+  if (elements.progressCard) {
+    elements.progressCard.hidden = !visibleTask;
+  }
   if (task) {
     const percent = Number(task.percent || Math.round(((task.current || 0) / Math.max(task.total || 1, 1)) * 100));
-    elements.progressLabel.textContent = task.message || "任务处理中";
-    elements.progressPercent.textContent = `${percent}%`;
-    elements.progressBar.style.width = `${Math.max(0, Math.min(percent, 100))}%`;
-    elements.progressCard.querySelector(".progress-track")?.setAttribute("aria-valuenow", String(Math.max(0, Math.min(percent, 100))));
+    if (elements.progressLabel) {
+      elements.progressLabel.textContent = localizeTaskMessage(task.message || t("taskProcessing"));
+    }
+    if (elements.progressPercent) {
+      elements.progressPercent.textContent = `${percent}%`;
+    }
+    if (elements.progressBar) {
+      elements.progressBar.style.width = `${Math.max(0, Math.min(percent, 100))}%`;
+    }
+    elements.progressTrack?.setAttribute("aria-valuenow", String(Math.max(0, Math.min(percent, 100))));
   }
 }
 
@@ -588,12 +650,13 @@ function renderOutputBaseConfig() {
   elements.outputBaseInput.disabled = busy;
   elements.browseOutputButton.disabled = busy;
   elements.applyOutputButton.disabled = busy || !draftChanged;
-  elements.applyOutputButton.textContent = state.applyingOutputBase ? "应用中..." : "应用目录";
-  elements.browseOutputButton.textContent = state.browsingOutputBase ? "打开中..." : "选择文件夹";
+  elements.applyOutputButton.textContent = state.applyingOutputBase ? t("applyOutputRootBusy") : t("applyOutputRoot");
+  elements.browseOutputButton.textContent = state.browsingOutputBase ? t("browseOutputRootBusy") : t("browseOutputRoot");
   elements.resetOutputButton.disabled = busy || currentOutputBase === defaultOutputBase;
+  elements.resetOutputButton.textContent = t("resetOutputRoot");
   elements.outputBaseNote.textContent = currentOutputBase === defaultOutputBase
-    ? `当前使用默认输出目录：${currentOutputBase}`
-    : `当前输出目录：${currentOutputBase}。默认目录：${defaultOutputBase}`;
+    ? t("outputRootDefaultCurrent", { current: currentOutputBase })
+    : t("outputRootCurrent", { current: currentOutputBase, defaultValue: defaultOutputBase });
 }
 
 function renderAccountDirConfig() {
@@ -613,17 +676,23 @@ function renderAccountDirConfig() {
   elements.browseAccountButton.disabled = busy;
   elements.applyAccountButton.disabled = busy || !draftChanged;
   elements.resetAccountButton.disabled = busy || !currentSource;
-  elements.browseAccountButton.textContent = state.browsingAccountDir ? "打开中..." : "选择微信目录";
-  elements.applyAccountButton.textContent = state.applyingAccountDir ? "应用中..." : "使用此目录";
+  elements.browseAccountButton.textContent = state.browsingAccountDir ? t("browseWechatRootBusy") : t("browseWechatRoot");
+  elements.applyAccountButton.textContent = state.applyingAccountDir ? t("applyWechatRootBusy") : t("applyWechatRoot");
+  elements.resetAccountButton.textContent = t("resetWechatRoot");
 
   if (currentSource) {
-    const matchedText = matchedAccountId ? `当前自动匹配账号：${matchedAccountId}` : "当前未匹配到运行中的微信账号，将回退到首个可用账号。";
-    elements.accountDirNote.textContent = `当前手动目录：${currentSource}。${matchedText}`;
+    const matchedText = matchedAccountId
+      ? t("wechatRootMatchedCurrent", { matched: matchedAccountId })
+      : t("wechatRootNoMatched");
+    elements.accountDirNote.textContent = t("wechatRootManualCurrent", {
+      current: currentSource,
+      matched: matchedText,
+    });
     return;
   }
 
-  const rootsText = searchRoots.length ? searchRoots.join("；") : "未检测到可扫描位置";
-  elements.accountDirNote.textContent = `当前使用自动发现。扫描位置：${rootsText}`;
+  const rootsText = searchRoots.length ? joinList(searchRoots) : t("wechatRootNoRoots");
+  elements.accountDirNote.textContent = t("wechatRootAutoCurrent", { roots: rootsText });
 }
 
 function renderSearchStatus() {
@@ -631,20 +700,29 @@ function renderSearchStatus() {
     return;
   }
   if (!state.status?.prepared) {
-    elements.searchStatus.textContent = "准备完成后，这里会显示最近会话；输入关键词时会自动筛选联系人和会话。";
+    elements.searchStatus.textContent = t("searchPreparedHint");
     return;
   }
   if (!state.query) {
-    elements.searchStatus.textContent = `当前显示最近会话 ${formatNumber(state.sessions.length)} 条。需要时可搜索备注、昵称、wxid 或摘要。`;
+    elements.searchStatus.textContent = t("searchRecent", {
+      count: formatNumber(state.sessions.length),
+    });
     return;
   }
-  elements.searchStatus.textContent = `关键词“${state.query}”匹配到 ${formatNumber(state.sessions.length)} 个会话、${formatNumber(
-    state.contacts.length
-  )} 个联系人。`;
+  elements.searchStatus.textContent = t("searchMatched", {
+    query: state.query,
+    sessions: formatNumber(state.sessions.length),
+    contacts: formatNumber(state.contacts.length),
+  });
 }
 
 function setControlFeedback(message, tone = "info") {
-  state.controlFeedback = { message, tone };
+  state.controlFeedback = { tone, raw: String(message ?? "") };
+  renderControlFeedback();
+}
+
+function setControlFeedbackKey(key, tone = "info", params = {}) {
+  state.controlFeedback = { tone, key, params };
   renderControlFeedback();
 }
 
@@ -659,14 +737,14 @@ function renderControlFeedback() {
   }
   const feedback = state.controlFeedback;
   elements.controlFeedback.hidden = !feedback;
-  elements.controlFeedback.textContent = feedback?.message || "";
+  elements.controlFeedback.textContent = feedback ? resolveEntryText(feedback) : "";
   elements.controlFeedback.dataset.tone = feedback?.tone || "";
 }
 
 function renderAccountOptions() {
   const accounts = state.status?.accounts || [];
   if (!accounts.length) {
-    elements.accountSelect.innerHTML = `<option value="">未发现本地账号</option>`;
+    elements.accountSelect.innerHTML = `<option value="">${escapeHtml(t("noAccountsOption"))}</option>`;
     elements.accountSelect.disabled = true;
     return;
   }
@@ -675,22 +753,23 @@ function renderAccountOptions() {
   elements.accountSelect.innerHTML = accounts
     .map((account) => {
       const selected = account.id === state.selectedAccountId ? "selected" : "";
-      const suffix = account.prepared ? "已准备" : "未准备";
-      const matched = account.id === state.status?.matchedAccountId ? " · 当前登录" : "";
-      return `<option value="${escapeAttr(account.id)}" ${selected}>${escapeHtml(
-        `${account.name} · ${suffix}${matched}`
-      )}</option>`;
+      const suffix = account.prepared ? t("accountPreparedSuffix") : t("accountUnpreparedSuffix");
+      const matched = account.id === state.status?.matchedAccountId ? t("accountMatchedSuffix") : "";
+      return `<option value="${escapeAttr(account.id)}" ${selected}>${escapeHtml(`${account.name} · ${suffix}${matched}`)}</option>`;
     })
     .join("");
 }
 
 function renderSidebar() {
+  if (!elements.sidebarList) {
+    return;
+  }
   if (!state.status?.prepared) {
     elements.sidebarList.innerHTML = `
       <section class="empty-state">
-        <span class="empty-kicker">Private by default</span>
-        <h4>还没有准备本地数据</h4>
-        <p>先登录微信，再点击“使用本地缓存 / 准备数据”。准备完成后，这里会显示最近会话和搜索结果。</p>
+        <span class="empty-kicker">${escapeHtml(t("privateDefaultKicker"))}</span>
+        <h4>${escapeHtml(t("sidebarEmptyTitle"))}</h4>
+        <p>${escapeHtml(t("sidebarEmptyBody"))}</p>
       </section>
     `;
     return;
@@ -699,30 +778,30 @@ function renderSidebar() {
   const sessionSection = `
     <section class="sidebar-section">
       <div class="sidebar-section-header">
-        <h3>${state.query ? "匹配会话" : "最近会话"}</h3>
-        <span>${state.sessions.length}</span>
+        <h3>${escapeHtml(state.query ? t("sidebarSectionMatchedSessions") : t("sidebarSectionRecentSessions"))}</h3>
+        <span>${escapeHtml(formatNumber(state.sessions.length))}</span>
       </div>
       <div class="session-list">
-          ${state.sessions.length ? state.sessions.map(renderSessionCard).join("") : renderNoSessionCard("没有匹配到最近会话。")}
-        </div>
-      </section>
+        ${state.sessions.length ? state.sessions.map(renderSessionCard).join("") : renderNoSessionCard(t("noRecentSessions"))}
+      </div>
+    </section>
   `;
 
-  const contactSection =
-    state.query &&
-    `
+  const contactSection = state.query
+    ? `
       <section class="sidebar-section">
         <div class="sidebar-section-header">
-          <h3>匹配联系人</h3>
-          <span>${state.contacts.length}</span>
+          <h3>${escapeHtml(t("sidebarSectionMatchedContacts"))}</h3>
+          <span>${escapeHtml(formatNumber(state.contacts.length))}</span>
         </div>
         <div class="session-list">
-          ${state.contacts.length ? state.contacts.map(renderContactCard).join("") : renderNoSessionCard("没有额外联系人结果。")}
+          ${state.contacts.length ? state.contacts.map(renderContactCard).join("") : renderNoSessionCard(t("noContactMatches"))}
         </div>
       </section>
-    `;
+    `
+    : "";
 
-  elements.sidebarList.innerHTML = `${sessionSection}${contactSection || ""}`;
+  elements.sidebarList.innerHTML = `${sessionSection}${contactSection}`;
 }
 
 function renderConversation() {
@@ -731,19 +810,20 @@ function renderConversation() {
   const isPrepared = Boolean(status?.prepared);
 
   elements.exportButton.disabled = !chat;
+  elements.exportButton.textContent = t("exportButton");
   elements.loadFullButton.hidden = !chat?.hasMore;
   elements.loadFullButton.disabled = state.loadingOlder;
-  elements.loadFullButton.textContent = state.loadingOlder ? "正在加载..." : "加载更早消息";
+  elements.loadFullButton.textContent = state.loadingOlder ? t("loadFullButtonBusy") : t("loadFullButton");
 
   if (!isPrepared) {
-    elements.conversationTitle.textContent = "等待会话";
-    elements.conversationSubtitle.textContent = "准备完成后，从左侧选择一个会话或联系人。";
-    elements.conversationBanner.textContent = "最近 400 条消息会优先载入，完整时间线可按需展开，避免首次打开卡顿。";
+    elements.conversationTitle.textContent = t("conversationWaitTitle");
+    elements.conversationSubtitle.textContent = t("conversationWaitSubtitle");
+    elements.conversationBanner.textContent = t("conversationWaitBanner");
     elements.messageStream.innerHTML = `
       <section class="empty-state">
-        <span class="empty-kicker">Ready when you are</span>
-        <h4>先准备本地数据，再开始浏览聊天记录。</h4>
-        <p>这个页面不会上传聊天内容，也不会改动原始加密数据库。它只是把你本机的解密结果做成一个更顺手的界面。</p>
+        <span class="empty-kicker">${escapeHtml(t("emptyKickerReady"))}</span>
+        <h4>${escapeHtml(t("emptyTitleReady"))}</h4>
+        <p>${escapeHtml(t("emptyBodyReady"))}</p>
       </section>
     `;
     renderInspector();
@@ -751,8 +831,10 @@ function renderConversation() {
   }
 
   if (state.loadingChat) {
-    const pendingLabel = state.selectedChat ? `正在载入 ${state.selectedChat} 的聊天内容…` : "正在载入聊天内容…";
-    elements.conversationBanner.textContent = "正在切换会话，旧内容已冻结，完成后会自动刷新到最新位置。";
+    const pendingLabel = state.selectedChat
+      ? t("pendingConversationSpecific", { name: state.selectedChat })
+      : t("pendingConversationGeneric");
+    elements.conversationBanner.textContent = t("loadingConversationBanner");
     elements.messageStream.innerHTML = `
       <section class="loading-state">
         <p>${escapeHtml(pendingLabel)}</p>
@@ -763,15 +845,15 @@ function renderConversation() {
   }
 
   if (state.chatError) {
-    elements.conversationTitle.textContent = "无法载入会话";
+    elements.conversationTitle.textContent = t("loadFailedTitle");
     elements.conversationSubtitle.textContent = state.selectedChat
-      ? `目标会话：${state.selectedChat}`
-      : "当前会话暂时无法读取。";
-    elements.conversationBanner.textContent = "可以重新点击左侧会话、检查本地缓存，或重新准备数据后再试。";
+      ? t("loadFailedSubtitleSpecific", { name: state.selectedChat })
+      : t("loadFailedSubtitleGeneric");
+    elements.conversationBanner.textContent = t("loadFailedBanner");
     elements.messageStream.innerHTML = `
       <section class="empty-state">
-        <span class="empty-kicker">Load failed</span>
-        <h4>没有显示旧聊天内容。</h4>
+        <span class="empty-kicker">${escapeHtml(t("loadFailedKicker"))}</span>
+        <h4>${escapeHtml(t("loadFailedHeading"))}</h4>
         <p>${escapeHtml(state.chatError)}</p>
       </section>
     `;
@@ -780,14 +862,14 @@ function renderConversation() {
   }
 
   if (!chat) {
-    elements.conversationTitle.textContent = "选择一个会话";
-    elements.conversationSubtitle.textContent = "左侧可以查看最近会话，或者搜索备注、昵称、wxid。";
-    elements.conversationBanner.textContent = "准备完成后，点击任意会话即可浏览文本内容并导出。";
+    elements.conversationTitle.textContent = t("selectConversationTitle");
+    elements.conversationSubtitle.textContent = t("selectConversationSubtitle");
+    elements.conversationBanner.textContent = t("selectConversationBanner");
     elements.messageStream.innerHTML = `
       <section class="empty-state">
-        <span class="empty-kicker">Conversation view</span>
-        <h4>左侧选一个会话，时间线就会出现在这里。</h4>
-        <p>默认先显示最近 400 条消息，然后可以继续向前翻阅更早内容。</p>
+        <span class="empty-kicker">${escapeHtml(t("selectConversationKicker"))}</span>
+        <h4>${escapeHtml(t("selectConversationHeading"))}</h4>
+        <p>${escapeHtml(t("selectConversationBody"))}</p>
       </section>
     `;
     renderInspector();
@@ -797,10 +879,11 @@ function renderConversation() {
   elements.conversationTitle.textContent = chat.contact.displayName;
   elements.conversationSubtitle.textContent = buildConversationSubtitle(chat.contact);
   elements.conversationBanner.textContent = chat.truncated
-    ? `当前显示 ${formatNumber(chat.returnedMessages)} / ${formatNumber(
-        chat.totalMessages
-      )} 条消息。点击“加载更早消息”会继续向前翻页，并保持当前滚动位置。`
-    : `共载入 ${formatNumber(chat.totalMessages)} 条消息。导出按钮会生成 UTF-8 文本文件。`;
+    ? t("conversationBannerTruncated", {
+        returned: formatNumber(chat.returnedMessages),
+        total: formatNumber(chat.totalMessages),
+      })
+    : t("conversationBannerFull", { total: formatNumber(chat.totalMessages) });
   elements.messageStream.innerHTML = renderMessageStream(chat.messages);
   renderInspector();
 }
@@ -815,7 +898,7 @@ function renderSessionCard(item) {
           <strong class="session-title">${escapeHtml(item.displayName)}</strong>
           <span class="session-time">${escapeHtml(formatRelativeTime(item.lastTimestamp))}</span>
         </span>
-        <span class="session-summary">${escapeHtml(item.summary || "No summary")}</span>
+        <span class="session-summary">${escapeHtml(item.summary || t("noSummary"))}</span>
         <span class="session-aux">${escapeHtml(item.username)}</span>
       </span>
       ${item.unreadCount ? `<span class="unread-badge">${escapeHtml(String(item.unreadCount))}</span>` : "<span></span>"}
@@ -832,9 +915,9 @@ function renderContactCard(item) {
       <span class="session-main">
         <span class="session-title-row">
           <strong class="session-title">${escapeHtml(item.displayName)}</strong>
-          <span class="session-time">Contact</span>
+          <span class="session-time">${escapeHtml(t("contactTag"))}</span>
         </span>
-        <span class="session-summary">${escapeHtml(aux || "Direct contact result")}</span>
+        <span class="session-summary">${escapeHtml(aux || t("directContactResult"))}</span>
         <span class="session-aux">${escapeHtml(item.username)}</span>
       </span>
       <span></span>
@@ -847,7 +930,7 @@ function renderNoSessionCard(message) {
     <div class="session-card" aria-hidden="true">
       <span class="session-avatar">-</span>
       <span class="session-main">
-        <strong class="session-title">暂无结果</strong>
+        <strong class="session-title">${escapeHtml(t("noSessionCard"))}</strong>
         <span class="session-summary">${escapeHtml(message)}</span>
       </span>
       <span></span>
@@ -859,8 +942,8 @@ function renderMessageStream(messages) {
   if (!messages.length) {
     return `
       <section class="empty-state">
-        <span class="empty-kicker">No messages</span>
-        <h4>这个联系人当前没有可显示的消息。</h4>
+        <span class="empty-kicker">${escapeHtml(t("noMessagesKicker"))}</span>
+        <h4>${escapeHtml(t("noMessagesTitle"))}</h4>
       </section>
     `;
   }
@@ -874,7 +957,6 @@ function renderMessageStream(messages) {
       chunks.push(`<div class="timeline-day">${escapeHtml(formatDayLabel(message.createTime))}</div>`);
     }
     const bubbleClass = message.isOutgoing ? "message-bubble message-out" : "message-bubble message-in";
-    const body = renderMessageBody(message);
     chunks.push(`
       <article class="${bubbleClass}" id="msg-${escapeAttr(String(message.localId))}">
         <div class="message-meta">
@@ -883,7 +965,7 @@ function renderMessageStream(messages) {
             ${escapeHtml(formatDateTime(message.createTime))}
           </time>
         </div>
-        ${body}
+        ${renderMessageBody(message)}
       </article>
     `);
   }
@@ -895,46 +977,46 @@ function renderInspector() {
   const chat = state.chat;
 
   if (!status?.prepared) {
-    elements.inspectorTitle.textContent = "等待本地数据";
-    elements.inspectorSubtitle.textContent = "准备完成后，这里会汇总当前会话的媒体、链接和消息统计。";
-    elements.inspectorStats.innerHTML = renderInspectorEmpty("尚未准备本地聊天数据。");
-    elements.inspectorMediaLabel.textContent = "当前未载入媒体";
-    elements.inspectorMediaGrid.innerHTML = renderInspectorEmpty("图片、视频和表情索引会在这里出现。");
-    elements.inspectorLinkLabel.textContent = "当前未载入链接";
-    elements.inspectorLinkList.innerHTML = renderInspectorEmpty("文本中的 URL 和分享链接会在这里归档。");
+    elements.inspectorTitle.textContent = t("inspectorWaitDataTitle");
+    elements.inspectorSubtitle.textContent = t("inspectorWaitDataSubtitle");
+    elements.inspectorStats.innerHTML = renderInspectorEmpty(t("inspectorWaitDataStats"));
+    elements.inspectorMediaLabel.textContent = t("mediaLabel");
+    elements.inspectorMediaGrid.innerHTML = renderInspectorEmpty(t("inspectorWaitDataMedia"));
+    elements.inspectorLinkLabel.textContent = t("linkLabel");
+    elements.inspectorLinkList.innerHTML = renderInspectorEmpty(t("inspectorWaitDataLinks"));
     return;
   }
 
   if (state.loadingChat) {
-    elements.inspectorTitle.textContent = "正在载入会话";
-    elements.inspectorSubtitle.textContent = "请稍候，右侧索引会随着时间线一起刷新。";
-    elements.inspectorStats.innerHTML = renderInspectorEmpty("正在整理当前会话的统计和媒体。");
-    elements.inspectorMediaLabel.textContent = "媒体索引整理中";
-    elements.inspectorMediaGrid.innerHTML = renderInspectorEmpty("正在扫描图片、视频和表情消息。");
-    elements.inspectorLinkLabel.textContent = "链接索引整理中";
-    elements.inspectorLinkList.innerHTML = renderInspectorEmpty("正在扫描消息里的 URL。");
+    elements.inspectorTitle.textContent = t("inspectorLoadingTitle");
+    elements.inspectorSubtitle.textContent = t("inspectorLoadingSubtitle");
+    elements.inspectorStats.innerHTML = renderInspectorEmpty(t("inspectorLoadingStats"));
+    elements.inspectorMediaLabel.textContent = t("inspectorLoadingMediaLabel");
+    elements.inspectorMediaGrid.innerHTML = renderInspectorEmpty(t("inspectorLoadingMedia"));
+    elements.inspectorLinkLabel.textContent = t("inspectorLoadingLinkLabel");
+    elements.inspectorLinkList.innerHTML = renderInspectorEmpty(t("inspectorLoadingLinks"));
     return;
   }
 
   if (state.chatError) {
-    elements.inspectorTitle.textContent = "会话读取失败";
+    elements.inspectorTitle.textContent = t("inspectorErrorTitle");
     elements.inspectorSubtitle.textContent = state.chatError;
-    elements.inspectorStats.innerHTML = renderInspectorEmpty("没有保留旧统计，请重新选择会话。");
-    elements.inspectorMediaLabel.textContent = "当前无可用媒体";
-    elements.inspectorMediaGrid.innerHTML = renderInspectorEmpty("无法读取媒体索引。");
-    elements.inspectorLinkLabel.textContent = "当前无可用链接";
-    elements.inspectorLinkList.innerHTML = renderInspectorEmpty("无法读取链接索引。");
+    elements.inspectorStats.innerHTML = renderInspectorEmpty(t("inspectorErrorStats"));
+    elements.inspectorMediaLabel.textContent = t("inspectorErrorMediaLabel");
+    elements.inspectorMediaGrid.innerHTML = renderInspectorEmpty(t("inspectorErrorMedia"));
+    elements.inspectorLinkLabel.textContent = t("inspectorErrorLinkLabel");
+    elements.inspectorLinkList.innerHTML = renderInspectorEmpty(t("inspectorErrorLinks"));
     return;
   }
 
   if (!chat) {
-    elements.inspectorTitle.textContent = "等待选择会话";
-    elements.inspectorSubtitle.textContent = "选择左侧任意会话后，这里会出现媒体、链接和联系人摘要。";
-    elements.inspectorStats.innerHTML = renderInspectorEmpty("会话统计会显示已载入条数、媒体数和链接数。");
-    elements.inspectorMediaLabel.textContent = "当前未载入媒体";
-    elements.inspectorMediaGrid.innerHTML = renderInspectorEmpty("图片、视频和表情索引会在这里出现。");
-    elements.inspectorLinkLabel.textContent = "当前未载入链接";
-    elements.inspectorLinkList.innerHTML = renderInspectorEmpty("文本中的 URL 和分享链接会在这里归档。");
+    elements.inspectorTitle.textContent = t("inspectorWaitChatTitle");
+    elements.inspectorSubtitle.textContent = t("inspectorWaitChatSubtitle");
+    elements.inspectorStats.innerHTML = renderInspectorEmpty(t("inspectorWaitChatStats"));
+    elements.inspectorMediaLabel.textContent = t("mediaLabel");
+    elements.inspectorMediaGrid.innerHTML = renderInspectorEmpty(t("inspectorWaitDataMedia"));
+    elements.inspectorLinkLabel.textContent = t("linkLabel");
+    elements.inspectorLinkList.innerHTML = renderInspectorEmpty(t("inspectorWaitDataLinks"));
     return;
   }
 
@@ -947,28 +1029,30 @@ function renderInspector() {
   elements.inspectorTitle.textContent = chat.contact.displayName;
   elements.inspectorSubtitle.textContent = buildConversationSubtitle(chat.contact);
   elements.inspectorStats.innerHTML = [
-    renderInspectorStat("已载入", formatNumber(messages.length)),
-    renderInspectorStat("图片", formatNumber(imageMessages.length)),
-    renderInspectorStat("视频", formatNumber(videoMessages.length)),
-    renderInspectorStat("链接", formatNumber(links.length)),
+    renderInspectorStat(t("inspectorLoadedLabel"), formatNumber(messages.length)),
+    renderInspectorStat(t("inspectorImageLabel"), formatNumber(imageMessages.length)),
+    renderInspectorStat(t("inspectorVideoLabel"), formatNumber(videoMessages.length)),
+    renderInspectorStat(t("inspectorLinkCountLabel"), formatNumber(links.length)),
   ].join("");
 
   const mediaItems = [
-    ...imageMessages.slice(0, 4).map((message) => renderInspectorMediaItem(message, "图片")),
-    ...videoMessages.slice(0, 3).map((message) => renderInspectorMediaItem(message, "视频")),
-    ...emojiMessages.slice(0, 3).map((message) => renderInspectorMediaItem(message, "表情")),
+    ...imageMessages.slice(0, 4).map((message) => renderInspectorMediaItem(message, t("inspectorImageLabel"))),
+    ...videoMessages.slice(0, 3).map((message) => renderInspectorMediaItem(message, t("inspectorVideoLabel"))),
+    ...emojiMessages.slice(0, 3).map((message) => renderInspectorMediaItem(message, t("inspectorEmojiLabel"))),
   ];
-  elements.inspectorMediaLabel.textContent = `当前已载入 ${formatNumber(
-    imageMessages.length + videoMessages.length + emojiMessages.length
-  )} 条媒体消息`;
+  elements.inspectorMediaLabel.textContent = t("inspectorMediaLoaded", {
+    count: formatNumber(imageMessages.length + videoMessages.length + emojiMessages.length),
+  });
   elements.inspectorMediaGrid.innerHTML = mediaItems.length
     ? mediaItems.join("")
-    : renderInspectorEmpty("当前已载入消息里还没有图片、视频或表情。");
+    : renderInspectorEmpty(t("inspectorNoMedia"));
 
-  elements.inspectorLinkLabel.textContent = `当前已载入 ${formatNumber(links.length)} 条链接`;
+  elements.inspectorLinkLabel.textContent = t("inspectorLinksLoaded", {
+    count: formatNumber(links.length),
+  });
   elements.inspectorLinkList.innerHTML = links.length
     ? links.slice(0, 8).map((link) => renderInspectorLinkItem(link)).join("")
-    : renderInspectorEmpty("当前已载入消息里还没有解析到链接。");
+    : renderInspectorEmpty(t("inspectorNoLinks"));
 }
 
 function renderInspectorStat(label, value) {
@@ -994,7 +1078,7 @@ function renderInspectorMediaItem(message, label) {
   return `
     <button class="inspector-media-item" type="button" data-jump-local-id="${escapeAttr(String(message.localId))}">
       <strong>${escapeHtml(label)}</strong>
-      <small>${escapeHtml(message.text || `${label}消息`)}</small>
+      <small>${escapeHtml(message.text || t("inspectorMediaFallback", { label }))}</small>
     </button>
   `;
 }
@@ -1023,7 +1107,7 @@ function collectUniqueLinks(messages) {
 }
 
 function jumpToMessage(localId) {
-  const target = elements.messageStream.querySelector(`#msg-${String(localId)}`);
+  const target = elements.messageStream?.querySelector(`#msg-${String(localId)}`);
   if (!target) {
     return;
   }
@@ -1033,31 +1117,31 @@ function jumpToMessage(localId) {
 function renderMessageBody(message) {
   if (message.displayType === "image") {
     if (!message.imageUrl) {
-      return renderMediaPlaceholder("图片消息", "本地图片暂时无法预览，但消息类型已正确识别。", "image");
+      return renderMediaPlaceholder(t("imageMessage"), t("imageMessageUnavailable"), "image");
     }
     const targetUrl = message.imageFullUrl || message.imageUrl;
     return `
       <figure class="message-image-wrap">
         <a class="message-image-link" href="${escapeAttr(targetUrl)}" target="_blank" rel="noreferrer">
-          <img class="message-image" src="${escapeAttr(message.imageUrl)}" alt="${escapeAttr(message.text || "图片消息")}" loading="lazy" decoding="async" />
+          <img class="message-image" src="${escapeAttr(message.imageUrl)}" alt="${escapeAttr(message.text || t("imageMessage"))}" loading="lazy" decoding="async" />
         </a>
-        <figcaption>${escapeHtml(message.text || "图片消息")}</figcaption>
+        <figcaption>${escapeHtml(message.text || t("imageMessage"))}</figcaption>
       </figure>
     `;
   }
   if (message.displayType === "video") {
     if (!message.videoUrl) {
-      return renderMediaPlaceholder("视频消息", "未在本机缓存中找到可播放视频文件。", "video");
+      return renderMediaPlaceholder(t("videoMessage"), t("videoMessageUnavailable"), "video");
     }
     return `
       <figure class="message-video-wrap">
         <video class="message-video" controls preload="metadata">
           <source src="${escapeAttr(message.videoUrl)}" type="${escapeAttr(message.videoMimeType || "video/mp4")}" />
-          当前浏览器无法播放这个视频。
+          ${escapeHtml(t("videoUnsupported"))}
         </video>
         <figcaption>
-          <span>${escapeHtml(message.text || "视频消息")}</span>
-          <a href="${escapeAttr(message.videoUrl)}" target="_blank" rel="noreferrer">打开原视频</a>
+          <span>${escapeHtml(message.text || t("videoMessage"))}</span>
+          <a href="${escapeAttr(message.videoUrl)}" target="_blank" rel="noreferrer">${escapeHtml(t("openOriginalVideo"))}</a>
         </figcaption>
       </figure>
     `;
@@ -1067,8 +1151,8 @@ function renderMessageBody(message) {
       <div class="message-emoji-card">
         <span class="message-emoji-glyph" aria-hidden="true">☺</span>
         <span>
-          <strong>${escapeHtml(message.text || "表情消息")}</strong>
-          <small>${message.mediaId ? `ID ${escapeHtml(shortenMediaId(message.mediaId))}` : "自定义表情"}</small>
+          <strong>${escapeHtml(message.text || t("emojiMessage"))}</strong>
+          <small>${message.mediaId ? `ID ${escapeHtml(shortenMediaId(message.mediaId))}` : escapeHtml(t("customEmoji"))}</small>
         </span>
       </div>
     `;
@@ -1077,14 +1161,14 @@ function renderMessageBody(message) {
     const firstLink = message.links[0];
     return `
       <a class="message-link-card" href="${escapeAttr(firstLink)}" target="_blank" rel="noreferrer">
-        <span class="message-link-kicker">Link</span>
+        <span class="message-link-kicker">${escapeHtml(t("linkCardKicker"))}</span>
         <strong>${escapeHtml(message.text && message.text !== firstLink ? message.text : readableUrl(firstLink))}</strong>
         <small>${escapeHtml(readableUrl(firstLink))}</small>
       </a>
     `;
   }
   if (message.displayType === "link") {
-    return renderMediaPlaceholder("链接/分享消息", "该分享内容没有可解析链接，已保留消息类型。", "link");
+    return renderMediaPlaceholder(t("linkMessage"), t("linkMessageUnavailable"), "link");
   }
   return `<div class="message-text">${renderTextWithLinks(message.text, message.links)}</div>`;
 }
@@ -1155,28 +1239,33 @@ function dedupeContacts(contacts, sessions) {
   return contacts.filter((item) => !seen.has(item.username));
 }
 
+function isBrowsableSession(item) {
+  const username = String(item?.username || "");
+  return !username.startsWith("@placeholder_");
+}
+
 function buildStatusNote(status) {
-  if (!status.accounts?.length) {
-    const roots = status.searchRoots?.length ? status.searchRoots.join("；") : "默认文档目录";
-    return `还没有在这些位置发现可用账号目录：${roots}。先登录微信桌面版，或手动选择微信文件根目录。`;
+  if (!status?.accounts?.length) {
+    const roots = status?.searchRoots?.length ? joinList(status.searchRoots) : t("wechatRootNoRoots");
+    return t("statusNoteNoAccounts", { roots });
   }
   if (!status.hasRunningWeixin) {
-    return "已发现本地账号目录，但当前没有检测到运行中的 Weixin.exe。要自动匹配并准备当前账号，需要先打开并登录微信。";
+    return t("statusNoteNoWeixin");
   }
   if (!status.prepared) {
-    const matched = status.matchedAccountId ? `当前已自动匹配到 ${status.matchedAccountId}。` : "";
-    return `${matched}现在可以点击“使用本地缓存 / 准备数据”，生成仅供本机检索与导出的解密副本。`;
+    const matchedPrefix = status.matchedAccountId ? t("statusNoteMatchedPrefix", { account: status.matchedAccountId }) : "";
+    return t("statusNoteNeedPrepare", { matchedPrefix });
   }
-  return `当前账号已准备完成。工作副本目录：${status.outputRoot}`;
+  return t("statusNotePrepared", { outputRoot: status.outputRoot });
 }
 
 function buildConversationSubtitle(contact) {
   const parts = [contact.username];
   if (contact.remark) {
-    parts.push(`remark: ${contact.remark}`);
+    parts.push(`${t("contactRemarkPrefix")}: ${contact.remark}`);
   }
   if (contact.alias) {
-    parts.push(`alias: ${contact.alias}`);
+    parts.push(`${t("contactAliasPrefix")}: ${contact.alias}`);
   }
   return parts.join("  ·  ");
 }
@@ -1195,20 +1284,21 @@ function formatRelativeTime(timestamp) {
   const date = new Date(timestamp * 1000);
   const now = Date.now();
   const diffHours = Math.round((now - date.getTime()) / (1000 * 60 * 60));
+  const locale = getDateLocale();
   if (diffHours < 24) {
-    return new Intl.DateTimeFormat("zh-CN", { hour: "2-digit", minute: "2-digit" }).format(date);
+    return new Intl.DateTimeFormat(locale, { hour: "2-digit", minute: "2-digit" }).format(date);
   }
   if (diffHours < 24 * 6) {
-    return new Intl.DateTimeFormat("zh-CN", { weekday: "short" }).format(date);
+    return new Intl.DateTimeFormat(locale, { weekday: "short" }).format(date);
   }
-  return new Intl.DateTimeFormat("zh-CN", { month: "numeric", day: "numeric" }).format(date);
+  return new Intl.DateTimeFormat(locale, { month: "numeric", day: "numeric" }).format(date);
 }
 
 function formatDateTime(timestamp) {
   if (!timestamp) {
     return "-";
   }
-  return new Intl.DateTimeFormat("zh-CN", {
+  return new Intl.DateTimeFormat(getDateLocale(), {
     month: "numeric",
     day: "numeric",
     hour: "2-digit",
@@ -1222,7 +1312,7 @@ function formatDayKey(timestamp) {
 }
 
 function formatDayLabel(timestamp) {
-  return new Intl.DateTimeFormat("zh-CN", {
+  return new Intl.DateTimeFormat(getDateLocale(), {
     year: "numeric",
     month: "long",
     day: "numeric",
@@ -1230,7 +1320,7 @@ function formatDayLabel(timestamp) {
 }
 
 function formatNumber(value) {
-  return new Intl.NumberFormat("en-US").format(value || 0);
+  return new Intl.NumberFormat(getNumberLocale()).format(value || 0);
 }
 
 async function fetchJson(url, options = {}) {
@@ -1253,12 +1343,54 @@ function sleep(ms) {
 }
 
 function showToast(message) {
+  state.toastMessage = { raw: String(message ?? "") };
+  renderToast();
+}
+
+function showToastKey(key, params = {}) {
+  state.toastMessage = { key, params };
+  renderToast();
+}
+
+function renderToast() {
+  if (!elements.toast) {
+    return;
+  }
   window.clearTimeout(state.toastTimer);
-  elements.toast.textContent = message;
+  if (!state.toastMessage) {
+    elements.toast.classList.remove("visible");
+    return;
+  }
+  elements.toast.textContent = resolveEntryText(state.toastMessage);
   elements.toast.classList.add("visible");
   state.toastTimer = window.setTimeout(() => {
     elements.toast.classList.remove("visible");
+    state.toastMessage = null;
   }, 3200);
+}
+
+function resolveErrorMessage(error, fallback = "") {
+  if (error instanceof Error && error.message) {
+    return localizeMessage(error.message);
+  }
+  if (typeof error === "string" && error) {
+    return localizeMessage(error);
+  }
+  return fallback;
+}
+
+function resolveEntryText(entry) {
+  if (!entry) {
+    return "";
+  }
+  if (entry.key) {
+    return t(entry.key, entry.params || {});
+  }
+  return localizeMessage(entry.raw || "");
+}
+
+function joinList(items) {
+  return items.join(t("dateLocale") === "zh-CN" ? "；" : "; ");
 }
 
 function escapeHtml(value) {

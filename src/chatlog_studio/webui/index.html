@@ -4,7 +4,7 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <meta name="theme-color" content="#f3efe7" />
-    <title>Chatlog Archive Desk</title>
+    <title>聊天档案台</title>
     <link rel="icon" href="/favicon.svg" type="image/svg+xml" />
     <link rel="stylesheet" href="/styles.css" />
   </head>
@@ -17,47 +17,59 @@
       <aside class="sidebar panel reveal">
         <div class="sidebar-shell">
           <header class="sidebar-hero">
+            <div class="language-switch">
+              <span class="language-switch-label" data-i18n="switchLabel">界面语言</span>
+              <div class="language-switch-buttons" role="group" aria-label="界面语言" data-i18n-aria-label="switchLabel">
+                <button class="locale-button" type="button" data-locale-option="zh-CN" data-i18n="switchOptionZh" aria-pressed="false">
+                  中文
+                </button>
+                <button class="locale-button" type="button" data-locale-option="en" data-i18n="switchOptionEn" aria-pressed="false">
+                  英文
+                </button>
+              </div>
+            </div>
             <div class="sidebar-brand">
-              <span class="eyebrow">Private archive workstation</span>
-              <h1>Chatlog Archive Desk</h1>
-              <p>
+              <span class="eyebrow" data-i18n="sidebarEyebrow">私人档案工作台</span>
+              <h1 data-i18n="brandTitle">聊天档案台</h1>
+              <p data-i18n="sidebarDescription">
                 像翻阅编辑台上的档案卡一样查看你自己的微信记录。准备本地数据库后，就能在最近会话、联系人与媒体索引之间快速切换。
               </p>
             </div>
 
             <div class="sidebar-meta" id="sidebar-meta">
               <div class="meta-pill">
-                <span class="meta-label">Weixin</span>
-                <strong id="weixin-state">Checking</strong>
+                <span class="meta-label" data-i18n="sidebarWeixinLabel">微信</span>
+                <strong id="weixin-state" data-i18n="statusChecking">检测中</strong>
               </div>
               <div class="meta-pill">
-                <span class="meta-label">Ready</span>
-                <strong id="ready-state">No</strong>
+                <span class="meta-label" data-i18n="sidebarReadyLabel">就绪</span>
+                <strong id="ready-state" data-i18n="statusChecking">检测中</strong>
               </div>
             </div>
           </header>
 
           <section class="sidebar-controls">
             <div class="section-heading">
-              <span class="eyebrow">Archive Control</span>
-              <p>先完成准备，再浏览会话。低频设置和缓存维护已折叠，避免干扰当前主任务。</p>
+              <span class="eyebrow" data-i18n="controlEyebrow">档案控制</span>
+              <p data-i18n="controlDescription">先完成准备，再浏览会话。低频设置和缓存维护已折叠，避免干扰当前主任务。</p>
             </div>
 
             <div class="action-stack">
               <button class="primary-button" id="prepare-button" type="button">
-                使用本地缓存 / 准备数据
+                <span data-i18n="prepareButton">使用本地缓存 / 准备数据</span>
               </button>
             </div>
 
             <div class="progress-card" id="progress-card" hidden>
               <div class="progress-row">
-                <span id="progress-label">等待任务开始</span>
+                <span id="progress-label" data-i18n="progressWaiting">等待任务开始</span>
                 <strong id="progress-percent">0%</strong>
               </div>
               <div
                 class="progress-track"
                 role="progressbar"
                 aria-label="准备数据进度"
+                data-i18n-aria-label="progressAria"
                 aria-valuemin="0"
                 aria-valuemax="100"
                 aria-valuenow="0"
@@ -70,15 +82,16 @@
 
             <div class="control-grid">
               <label class="field">
-                <span>账号</span>
-                <select id="account-select" aria-label="Select account"></select>
+                <span data-i18n="accountLabel">账号</span>
+                <select id="account-select" aria-label="选择账号" data-i18n-aria-label="accountSelectAria"></select>
               </label>
               <label class="field">
-                <span>搜索会话</span>
+                <span data-i18n="searchLabel">搜索会话</span>
                 <input
                   id="search-input"
                   type="search"
-                  placeholder="名字、备注、wxid、摘要"
+                  placeholder="名字、备注、微信号标识、摘要"
+                  data-i18n-placeholder="searchPlaceholder"
                   autocomplete="off"
                 />
               </label>
@@ -86,76 +99,78 @@
 
             <div class="account-config">
               <div class="section-heading compact">
-                <span class="eyebrow">WeChat Data Root</span>
-                <p>
-                  程序会先自动扫描常见位置；如果你的微信数据不在默认文档目录，比如被 OneDrive 接管、放在其他磁盘，或自动发现失败，再手动指定微信文件根目录。选择后会优先按当前已登录微信去匹配对应账号。
+                <span class="eyebrow" data-i18n="wechatRootEyebrow">微信数据根目录</span>
+                <p data-i18n="wechatRootDescription">
+                  程序会先自动扫描常见位置；如果你的微信数据不在默认文档目录，比如被同步盘接管、放在其他磁盘，或自动发现失败，再手动指定微信文件根目录。选择后会优先按当前已登录微信去匹配对应账号。
                 </p>
               </div>
               <label class="field">
-                <span>微信文件根目录</span>
+                <span data-i18n="wechatRootLabel">微信文件根目录</span>
                 <input
                   id="account-dir-input"
                   type="text"
                   placeholder="例如 %USERPROFILE%\\Documents\\xwechat_files"
+                  data-i18n-placeholder="wechatRootPlaceholder"
                   autocomplete="off"
                 />
               </label>
               <div class="path-actions">
                 <button class="ghost-button compact-button" id="browse-account-button" type="button">
-                  选择微信文件目录
+                  <span data-i18n="browseWechatRoot">选择微信文件目录</span>
                 </button>
                 <button class="ghost-button compact-button" id="apply-account-button" type="button">
-                  使用此目录
+                  <span data-i18n="applyWechatRoot">使用此目录</span>
                 </button>
                 <button class="ghost-button compact-button" id="reset-account-button" type="button">
-                  恢复自动发现
+                  <span data-i18n="resetWechatRoot">恢复自动发现</span>
                 </button>
               </div>
-              <p class="field-note" id="account-dir-note">
+              <p class="field-note" id="account-dir-note" data-i18n="wechatRootNote">
                 推荐直接选择 `xwechat_files` 根目录。也兼容直接选择单个账号目录；如果当前检测到运行中的微信，会优先自动匹配对应账号。
               </p>
             </div>
 
             <details class="advanced-panel" id="advanced-panel">
-              <summary>高级设置与缓存维护</summary>
+              <summary data-i18n="advancedSummary">高级设置与缓存维护</summary>
               <div class="advanced-body">
                 <div class="output-config">
                   <div class="section-heading compact">
-                    <span class="eyebrow">Output Root</span>
-                    <p>统一管理 `decrypted`、`exports` 和 `media`。切换后会按账号自动建子目录。</p>
+                    <span class="eyebrow" data-i18n="outputRootEyebrow">输出根目录</span>
+                    <p data-i18n="outputRootDescription">统一管理 `decrypted`、`exports` 和 `media`。切换后会按账号自动建子目录。</p>
                   </div>
                   <label class="field">
-                    <span>输出根目录</span>
+                    <span data-i18n="outputRootLabel">输出根目录</span>
                     <input
                       id="output-base-input"
                       type="text"
-                      placeholder="例如 D:\\ChatlogArchive"
+                      placeholder="例如 D:\\聊天档案"
+                      data-i18n-placeholder="outputRootPlaceholder"
                       autocomplete="off"
                     />
                   </label>
                   <div class="path-actions">
                     <button class="ghost-button compact-button" id="browse-output-button" type="button">
-                      选择文件夹
+                      <span data-i18n="browseOutputRoot">选择文件夹</span>
                     </button>
                     <button class="ghost-button compact-button" id="apply-output-button" type="button">
-                      应用目录
+                      <span data-i18n="applyOutputRoot">应用目录</span>
                     </button>
                     <button class="ghost-button compact-button" id="reset-output-button" type="button">
-                      恢复默认
+                      <span data-i18n="resetOutputRoot">恢复默认</span>
                     </button>
                   </div>
-                  <p class="field-note" id="output-base-note">
+                  <p class="field-note" id="output-base-note" data-i18n="outputRootDefaultNote">
                     未指定时使用默认本地缓存目录；准备数据、媒体缓存和文本导出会放在同一个根目录下。
                   </p>
                 </div>
 
                 <div class="danger-panel">
                   <div class="section-heading compact">
-                    <span class="eyebrow">Cache Reset</span>
-                    <p>仅删除本工具生成的缓存和解密副本，不影响原始微信数据库。</p>
+                    <span class="eyebrow" data-i18n="cacheResetEyebrow">缓存重建</span>
+                    <p data-i18n="cacheResetDescription">仅删除本工具生成的缓存和解密副本，不影响原始微信数据库。</p>
                   </div>
                   <button class="ghost-button danger-lite" id="force-prepare-button" type="button">
-                    清空缓存并重新识别
+                    <span data-i18n="forcePrepareButton">清空缓存并重新识别</span>
                   </button>
                 </div>
               </div>
@@ -164,8 +179,8 @@
 
           <section class="sidebar-results">
             <div class="section-heading compact">
-              <span class="eyebrow">Archive Navigator</span>
-              <p id="search-status">最近会话优先显示，搜索时会把匹配会话和联系人分组呈现，方便快速定位。</p>
+              <span class="eyebrow" data-i18n="archiveNavigatorEyebrow">档案导航</span>
+              <p id="search-status" data-i18n="searchStatusDefault">最近会话优先显示，搜索时会把匹配会话和联系人分组呈现，方便快速定位。</p>
             </div>
             <div class="sidebar-list" id="sidebar-list" aria-live="polite"></div>
           </section>
@@ -175,27 +190,27 @@
       <main class="workspace">
         <header class="workspace-top panel reveal reveal-delay-1">
           <div class="headline-block">
-            <span class="eyebrow">Own your desktop archive</span>
-            <h2>把微信聊天整理成一张可翻阅、可检索、可导出的本地档案台</h2>
-            <p id="status-note">
-              打开微信并保持登录后，点击 Prepare Local Data。所有数据处理都留在这台机器上。
+            <span class="eyebrow" data-i18n="headlineEyebrow">掌控你的本地档案</span>
+            <h2 data-i18n="headlineTitle">把微信聊天整理成一张可翻阅、可检索、可导出的本地档案台</h2>
+            <p id="status-note" data-i18n="headlineStatus">
+              打开微信并保持登录后，点击“使用本地缓存 / 准备数据”。所有数据处理都留在这台机器上。
             </p>
           </div>
           <div class="status-grid">
             <article class="status-card">
-              <span class="status-label">Contacts</span>
+              <span class="status-label" data-i18n="statusContacts">联系人</span>
               <strong id="contacts-count">0</strong>
             </article>
             <article class="status-card">
-              <span class="status-label">Sessions</span>
+              <span class="status-label" data-i18n="statusSessions">会话</span>
               <strong id="sessions-count">0</strong>
             </article>
             <article class="status-card">
-              <span class="status-label">Exports</span>
+              <span class="status-label" data-i18n="statusExports">导出</span>
               <strong id="exports-count">0</strong>
             </article>
             <article class="status-card">
-              <span class="status-label">Decrypted DBs</span>
+              <span class="status-label" data-i18n="statusDbs">解密库</span>
               <strong id="db-count">0</strong>
             </article>
           </div>
@@ -205,29 +220,29 @@
           <section class="conversation panel reveal reveal-delay-2">
             <div class="conversation-header">
               <div>
-                <span class="eyebrow">Conversation</span>
-                <h3 id="conversation-title">Select a chat</h3>
-                <p id="conversation-subtitle">准备完成后，从左侧选择一个会话、联系人或搜索结果。</p>
+                <span class="eyebrow" data-i18n="conversationEyebrow">会话</span>
+                <h3 id="conversation-title" data-i18n="conversationTitle">选择一个会话</h3>
+                <p id="conversation-subtitle" data-i18n="conversationSubtitle">准备完成后，从左侧选择一个会话、联系人或搜索结果。</p>
               </div>
               <div class="conversation-actions">
                 <button id="load-full-button" class="ghost-button" type="button" hidden>
-                  加载更早消息
+                  <span data-i18n="loadFullButton">加载更早消息</span>
                 </button>
                 <button id="export-button" class="ghost-button" type="button" disabled>
-                  导出当前会话
+                  <span data-i18n="exportButton">导出当前会话</span>
                 </button>
               </div>
             </div>
 
-            <div class="conversation-banner" id="conversation-banner">
+            <div class="conversation-banner" id="conversation-banner" data-i18n="conversationBanner">
               最近 400 条消息会优先载入，完整时间线可按需展开，避免首次打开卡顿。
             </div>
 
             <div class="message-stream" id="message-stream">
               <section class="empty-state">
-                <span class="empty-kicker">Ready when you are</span>
-                <h4>先准备本地数据，再开始浏览聊天记录。</h4>
-                <p>
+                <span class="empty-kicker" data-i18n="emptyKickerReady">准备就绪</span>
+                <h4 data-i18n="emptyTitleReady">先准备本地数据，再开始浏览聊天记录。</h4>
+                <p data-i18n="emptyBodyReady">
                   这个页面不会上传聊天内容，也不会改动原始加密数据库。它只是把你本机的解密结果做成一个更顺手的界面。
                 </p>
               </section>
@@ -236,25 +251,25 @@
 
           <aside class="inspector panel reveal reveal-delay-2" id="inspector-panel">
             <div class="inspector-section">
-              <span class="eyebrow">Inspector</span>
-              <h3 id="inspector-title">等待选择会话</h3>
-              <p id="inspector-subtitle">这里会显示当前会话的媒体、链接和联系人信息。</p>
+              <span class="eyebrow" data-i18n="inspectorEyebrow">检查面板</span>
+              <h3 id="inspector-title" data-i18n="inspectorTitle">等待选择会话</h3>
+              <p id="inspector-subtitle" data-i18n="inspectorSubtitle">这里会显示当前会话的媒体、链接和联系人信息。</p>
             </div>
 
             <div class="inspector-section inspector-stats" id="inspector-stats"></div>
 
             <div class="inspector-section">
               <div class="inspector-section-head">
-                <span class="eyebrow">Media shelf</span>
-                <strong id="inspector-media-label">当前未载入媒体</strong>
+                <span class="eyebrow" data-i18n="mediaShelfEyebrow">媒体架</span>
+                <strong id="inspector-media-label" data-i18n="mediaLabel">当前未载入媒体</strong>
               </div>
               <div class="inspector-media-grid" id="inspector-media-grid"></div>
             </div>
 
             <div class="inspector-section">
               <div class="inspector-section-head">
-                <span class="eyebrow">Link index</span>
-                <strong id="inspector-link-label">当前未载入链接</strong>
+                <span class="eyebrow" data-i18n="linkIndexEyebrow">链接索引</span>
+                <strong id="inspector-link-label" data-i18n="linkLabel">当前未载入链接</strong>
               </div>
               <div class="inspector-link-list" id="inspector-link-list"></div>
             </div>

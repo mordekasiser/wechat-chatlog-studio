@@ -41,6 +41,27 @@ python -m build
 - Update `README.md` and `README.zh-CN.md` when user-facing behavior changes.
 - Add or update tests when behavior changes.
 
+## Before Public Release
+
+- Audit current files, old refs, and tags for secrets or private material before publishing the repository.
+- Review branch and tag history for leaked exports, databases, tokens, private notes, or internal-only documents.
+- Check whether private rule files such as local `AGENTS.md`, `agent.md`, `codex/agent.md`, or similar guidance ever entered history.
+- Remove or rewrite history if commits expose machine-specific paths, usernames, home directories, or other local environment details.
+- Confirm screenshots, examples, and command snippets do not reveal personal account data or workstation information.
+- Re-check release artifacts and generated files before creating a public tag or GitHub release.
+
+Recommended checks:
+
+```powershell
+git tag --list
+git log --all -- AGENTS.md
+git log --all -- CLAUDE.md
+git log --all -- GEMINI.md
+git log --all -S "C:\Users\" -- .
+git log --all -S "/Users/" -- .
+git log --all -S "/home/" -- .
+```
+
 ## Pull Requests
 
 - Explain what changed and why.
