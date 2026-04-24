@@ -14,7 +14,10 @@ const state = {
   sidebarRequestId: 0,
   chatRequestId: 0,
   toastTimer: null,
+  accountDirDraft: "",
   outputBaseDraft: "",
+  applyingAccountDir: false,
+  browsingAccountDir: false,
   applyingOutputBase: false,
   browsingOutputBase: false,
   controlFeedback: null,
@@ -28,6 +31,11 @@ const elements = {
   progressPercent: document.querySelector("#progress-percent"),
   progressBar: document.querySelector("#progress-bar"),
   controlFeedback: document.querySelector("#control-feedback"),
+  accountDirInput: document.querySelector("#account-dir-input"),
+  accountDirNote: document.querySelector("#account-dir-note"),
+  browseAccountButton: document.querySelector("#browse-account-button"),
+  applyAccountButton: document.querySelector("#apply-account-button"),
+  resetAccountButton: document.querySelector("#reset-account-button"),
   outputBaseInput: document.querySelector("#output-base-input"),
   outputBaseNote: document.querySelector("#output-base-note"),
   browseOutputButton: document.querySelector("#browse-output-button"),
@@ -86,6 +94,31 @@ function wireEvents() {
       return;
     }
     prepareLocalData(true).catch((error) => showToast(error.message));
+  });
+
+  elements.accountDirInput.addEventListener("input", (event) => {
+    state.accountDirDraft = event.target.value;
+    renderAccountDirConfig();
+  });
+
+  elements.accountDirInput.addEventListener("keydown", (event) => {
+    if (event.key !== "Enter") {
+      return;
+    }
+    event.preventDefault();
+    applyWechatRoot(state.accountDirDraft).catch((error) => showToast(error.message));
+  });
+
+  elements.browseAccountButton.addEventListener("click", () => {
+    browseWechatRoot().catch((error) => showToast(error.message));
+  });
+
+  elements.applyAccountButton.addEventListener("click", () => {
+    applyWechatRoot(state.accountDirDraft).catch((error) => showToast(error.message));
+  });
+
+  elements.resetAccountButton.addEventListener("click", () => {
+    applyWechatRoot("").catch((error) => showToast(error.message));
   });
 
   elements.outputBaseInput.addEventListener("input", (event) => {
@@ -198,6 +231,7 @@ async function refreshStatus() {
   const payload = await fetchJson(`/api/status${suffix}`);
   state.status = payload;
   state.selectedAccountId = payload.selectedAccountId || null;
+  state.accountDirDraft = payload.manualSourcePath || "";
   state.outputBaseDraft = payload.outputBase || "";
   renderStatus();
 }
@@ -408,6 +442,56 @@ async function exportCurrentChat() {
   await refreshStatus();
 }
 
+async function browseWechatRoot() {
+  state.browsingAccountDir = true;
+  renderAccountDirConfig();
+  try {
+    const payload = await fetchJson("/api/wechat-root/browse", {
+      method: "POST",
+      body: JSON.stringify({
+        initialDir: state.accountDirDraft || state.status?.manualSourcePath || state.status?.xwechatRoot || "",
+      }),
+    });
+    if (!payload.path) {
+      return;
+    }
+    state.accountDirDraft = payload.path;
+    renderAccountDirConfig();
+  } finally {
+    state.browsingAccountDir = false;
+    renderAccountDirConfig();
+  }
+}
+
+async function applyWechatRoot(sourceDir) {
+  state.applyingAccountDir = true;
+  renderAccountDirConfig();
+  try {
+    setControlFeedback(sourceDir ? "正在更新微信文件目录…" : "正在恢复自动发现…", "info");
+    const payload = await fetchJson("/api/wechat-root", {
+      method: "POST",
+      body: JSON.stringify({
+        sourceDir,
+      }),
+    });
+    state.status = payload;
+    state.selectedAccountId = payload.selectedAccountId || null;
+    state.accountDirDraft = payload.manualSourcePath || "";
+    invalidateChatContext();
+    renderStatus();
+    await refreshSidebar();
+    await loadBestInitialChat();
+    const message = payload.manualSourcePath
+      ? `微信文件目录已切换到 ${payload.manualSourcePath}`
+      : "已恢复自动发现微信文件目录";
+    setControlFeedback(message, "success");
+    showToast(message);
+  } finally {
+    state.applyingAccountDir = false;
+    renderAccountDirConfig();
+  }
+}
+
 async function browseOutputBase() {
   state.browsingOutputBase = true;
   renderOutputBaseConfig();
@@ -459,6 +543,7 @@ function renderStatus() {
   const status = state.status;
   const stats = status?.stats || {};
   renderActionState();
+  renderAccountDirConfig();
   renderOutputBaseConfig();
   renderSearchStatus();
 
@@ -511,6 +596,36 @@ function renderOutputBaseConfig() {
     : `当前输出目录：${currentOutputBase}。默认目录：${defaultOutputBase}`;
 }
 
+function renderAccountDirConfig() {
+  const currentSource = state.status?.manualSourcePath || "";
+  const draft = state.accountDirDraft ?? currentSource;
+  const busy = state.preparing || state.applyingAccountDir || state.browsingAccountDir;
+  const draftChanged = draft.trim() !== currentSource.trim();
+  const matchedAccountId = state.status?.matchedAccountId || "";
+  const searchRoots = state.status?.searchRoots || state.status?.xwechatRoots || [];
+
+  if (!elements.accountDirInput) {
+    return;
+  }
+
+  elements.accountDirInput.value = draft;
+  elements.accountDirInput.disabled = busy;
+  elements.browseAccountButton.disabled = busy;
+  elements.applyAccountButton.disabled = busy || !draftChanged;
+  elements.resetAccountButton.disabled = busy || !currentSource;
+  elements.browseAccountButton.textContent = state.browsingAccountDir ? "打开中..." : "选择微信目录";
+  elements.applyAccountButton.textContent = state.applyingAccountDir ? "应用中..." : "使用此目录";
+
+  if (currentSource) {
+    const matchedText = matchedAccountId ? `当前自动匹配账号：${matchedAccountId}` : "当前未匹配到运行中的微信账号，将回退到首个可用账号。";
+    elements.accountDirNote.textContent = `当前手动目录：${currentSource}。${matchedText}`;
+    return;
+  }
+
+  const rootsText = searchRoots.length ? searchRoots.join("；") : "未检测到可扫描位置";
+  elements.accountDirNote.textContent = `当前使用自动发现。扫描位置：${rootsText}`;
+}
+
 function renderSearchStatus() {
   if (!elements.searchStatus) {
     return;
@@ -551,7 +666,7 @@ function renderControlFeedback() {
 function renderAccountOptions() {
   const accounts = state.status?.accounts || [];
   if (!accounts.length) {
-    elements.accountSelect.innerHTML = `<option value="">No local account found</option>`;
+    elements.accountSelect.innerHTML = `<option value="">未发现本地账号</option>`;
     elements.accountSelect.disabled = true;
     return;
   }
@@ -560,9 +675,10 @@ function renderAccountOptions() {
   elements.accountSelect.innerHTML = accounts
     .map((account) => {
       const selected = account.id === state.selectedAccountId ? "selected" : "";
-      const suffix = account.prepared ? "Prepared" : "Raw";
+      const suffix = account.prepared ? "已准备" : "未准备";
+      const matched = account.id === state.status?.matchedAccountId ? " · 当前登录" : "";
       return `<option value="${escapeAttr(account.id)}" ${selected}>${escapeHtml(
-        `${account.name} · ${suffix}`
+        `${account.name} · ${suffix}${matched}`
       )}</option>`;
     })
     .join("");
@@ -1041,13 +1157,15 @@ function dedupeContacts(contacts, sessions) {
 
 function buildStatusNote(status) {
   if (!status.accounts?.length) {
-    return "还没有在 Documents\\xwechat_files 下发现可用账号目录。先登录微信桌面版，再回来点击准备。";
+    const roots = status.searchRoots?.length ? status.searchRoots.join("；") : "默认文档目录";
+    return `还没有在这些位置发现可用账号目录：${roots}。先登录微信桌面版，或手动选择微信文件根目录。`;
   }
   if (!status.hasRunningWeixin) {
-    return "已发现本地账号目录，但当前没有检测到运行中的 Weixin.exe。要准备数据，需要先打开并登录微信。";
+    return "已发现本地账号目录，但当前没有检测到运行中的 Weixin.exe。要自动匹配并准备当前账号，需要先打开并登录微信。";
   }
   if (!status.prepared) {
-    return "账号目录和运行中的微信都已检测到，现在可以点击“使用本地缓存 / 准备数据”，生成仅供本机检索与导出的解密副本。";
+    const matched = status.matchedAccountId ? `当前已自动匹配到 ${status.matchedAccountId}。` : "";
+    return `${matched}现在可以点击“使用本地缓存 / 准备数据”，生成仅供本机检索与导出的解密副本。`;
   }
   return `当前账号已准备完成。工作副本目录：${status.outputRoot}`;
 }

@@ -8,13 +8,38 @@ version = "0.1.0"
 description = "Local Windows tool for exploring and exporting your own WeChat desktop chat data."
 readme = "README.md"
 requires-python = ">=3.10"
-license = { text = "MIT" }
+license = "MIT"
 authors = [
   { name = "Open Source Maintainers" }
+]
+keywords = ["wechat", "chat-export", "windows", "local-first", "wcdb"]
+classifiers = [
+  "Development Status :: 3 - Alpha",
+  "Environment :: Win32 (MS Windows)",
+  "Intended Audience :: End Users/Desktop",
+  "Operating System :: Microsoft :: Windows",
+  "Programming Language :: Python :: 3",
+  "Programming Language :: Python :: 3.10",
+  "Programming Language :: Python :: 3.11",
+  "Programming Language :: Python :: 3.12",
+  "Programming Language :: Python :: 3.13",
+  "Topic :: Communications :: Chat",
+  "Topic :: Utilities",
 ]
 dependencies = [
   "wdecipher==0.0.1",
   "pycryptodomex==3.23.0",
+]
+
+[project.urls]
+Homepage = "https://github.com/mordekasiser/wechat-chatlog-studio"
+Repository = "https://github.com/mordekasiser/wechat-chatlog-studio"
+Issues = "https://github.com/mordekasiser/wechat-chatlog-studio/issues"
+
+[project.optional-dependencies]
+dev = [
+  "build>=1.2.2",
+  "pytest>=8.0",
 ]
 
 [project.scripts]

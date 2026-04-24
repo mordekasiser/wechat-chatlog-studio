@@ -11,6 +11,8 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import Iterator, Sequence
 
+from .wechat_paths import account_message_db_path, candidate_xwechat_roots
+
 PACKAGE_ROOT = Path(__file__).resolve().parent
 PROJECT_ROOT = PACKAGE_ROOT.parent.parent
 
@@ -35,7 +37,6 @@ PAGE_SIZE = 4096
 DEFAULT_PAGES_TO_CHECK = 3
 DEFAULT_MAX_CANDIDATES = 256
 HEX_CANDIDATE_RE = re.compile(rb"x'([0-9A-Fa-f]{64})([0-9A-Fa-f]{32})'")
-DEFAULT_DB_ROOT = Path.home() / "Documents" / "xwechat_files"
 DEFAULT_DB_PATTERN = "*/db_storage/message/message_0.db"
 
 
@@ -113,10 +114,13 @@ def mask_hex(data: bytes, reveal: bool) -> str:
 
 
 def discover_default_db() -> Path | None:
-    if not DEFAULT_DB_ROOT.exists():
-        return None
-    matches = sorted(DEFAULT_DB_ROOT.glob(DEFAULT_DB_PATTERN), key=lambda path: path.stat().st_mtime, reverse=True)
-    return matches[0] if matches else None
+    matches: list[Path] = []
+    for root in candidate_xwechat_roots():
+        if not root.exists():
+            continue
+        matches.extend(root.glob(DEFAULT_DB_PATTERN))
+    ordered = sorted(matches, key=lambda path: path.stat().st_mtime, reverse=True)
+    return ordered[0] if ordered else None
 
 
 def resolve_db_path(db_path: Path | None) -> Path:
@@ -352,6 +356,34 @@ def find_working_key(
     raise LookupError("no working SQLCipher4/WCDB candidate matched the checked pages")
 
 
+def find_matching_account_dir(
+    account_dirs: Sequence[Path],
+    pages: int = 1,
+    max_candidates: int = DEFAULT_MAX_CANDIDATES,
+) -> Path | None:
+    resolved_accounts = [account_dir.resolve(strict=False) for account_dir in account_dirs]
+    if not resolved_accounts or not get_weixin_pids():
+        return None
+
+    candidates = scan_all_candidates(max_candidates)
+    if not candidates:
+        return None
+
+    variants = build_variants()
+    for account_dir in resolved_accounts:
+        db_path = account_message_db_path(account_dir)
+        if not db_path.exists():
+            continue
+        try:
+            db_salt, db_pages = read_db_pages(db_path, pages)
+        except ValueError:
+            continue
+        for candidate in candidates:
+            if validate_candidate(candidate, db_salt, db_pages, variants) is not None:
+                return account_dir
+    return None
+
+
 def decrypt_database(db_path: Path, out_path: Path, result: ValidationResult) -> None:
     resolved_db_path = db_path.resolve()
     resolved_out_path = out_path.resolve()
@@ -465,6 +497,7 @@ __all__ = [
     "Candidate",
     "ValidationResult",
     "decrypt_database",
+    "find_matching_account_dir",
     "find_working_key",
     "mask_hex",
     "scan_all_candidates",

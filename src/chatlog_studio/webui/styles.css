@@ -343,6 +343,18 @@ body::after {
   border-radius: var(--radius-lg);
 }
 
+.account-config {
+  display: grid;
+  gap: 0.75rem;
+  padding: 0.95rem;
+  border-radius: var(--radius-lg);
+  background:
+    linear-gradient(180deg, rgba(255, 252, 248, 0.9), rgba(247, 239, 229, 0.94)),
+    var(--surface);
+  border: 1px solid var(--line);
+  box-shadow: var(--shadow-card);
+}
+
 .danger-panel {
   display: grid;
   gap: 0.75rem;

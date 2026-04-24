@@ -31,7 +31,13 @@ Chatlog Studio 提供：
 - Windows
 - Python 3.10 及以上
 - 已安装并登录微信桌面版
-- 本地微信数据位于 `%USERPROFILE%\Documents\xwechat_files`
+- 本地微信数据位于某个 `xwechat_files` 根目录下
+
+程序会自动扫描这些常见位置：
+- `%USERPROFILE%\Documents\xwechat_files`
+- `%OneDrive%\Documents\xwechat_files`
+
+如果你的微信数据不在这些默认位置，现在也可以在网页界面里手动选择微信文件根目录，或者通过命令行传入 `--account-dir`。
 
 ## 快速开始
 
@@ -58,12 +64,25 @@ chatlog-studio
 chatlog-studio
 ```
 
+网页界面现在支持：
+- 自动发现常见的 `xwechat_files` 目录
+- 自动发现失败时手动选择微信文件根目录
+- 手动切换导出输出目录
+
 ### 命令行
 
 可选命令行入口：
 
 ```powershell
 chatlog-studio-cli --help
+```
+
+示例：
+
+```powershell
+chatlog-studio-cli --account-dir "C:\Users\you\Documents\xwechat_files" list
+chatlog-studio-cli --account-dir "D:\WeChatData\xwechat_files" prepare --force
+chatlog-studio-cli --account-dir "D:\WeChatData\xwechat_files\wxid_xxx" export "联系人名"
 ```
 
 ### 底层探测工具
@@ -80,6 +99,10 @@ wechat4-key-probe --help
 
 ```powershell
 scripts\chatlog.bat
+scripts\chatlog.bat install
+scripts\chatlog.bat install --dev
+scripts\chatlog.bat ui --no-browser
+scripts\chatlog.bat cli --help
 python scripts\chatlog_visual.py
 python scripts\chatlog_tool.py
 python scripts\wechat4_key_probe.py
@@ -98,10 +121,22 @@ chatlog-studio --output-base D:\ChatlogArchive
 chatlog-studio-cli --output-base D:\ChatlogArchive export "联系人名"
 ```
 
+如果想显式指定微信文件根目录或单个账号目录，也可以传：
+
+```powershell
+chatlog-studio --account-dir "D:\WeChatData\xwechat_files"
+chatlog-studio-cli --account-dir "D:\WeChatData\xwechat_files\wxid_xxx" list
+```
+
 网页界面里也可以直接输入或选择一个文件夹作为输出根目录。切换后，该目录下会按账号创建子目录，并统一存放：
 - `decrypted/`
 - `exports/`
 - `media/`
+
+同一个网页界面还支持：
+- 恢复自动发现微信目录
+- 手动选择 `xwechat_files` 根目录
+- 在能够真实匹配时优先选择当前已登录的微信账号
 
 ## 输出目录
 
@@ -121,6 +156,38 @@ chatlog-studio-cli --output-base D:\ChatlogArchive export "联系人名"
 ```text
 <输出根目录>\<account-id>\
 ```
+
+## 开发
+
+安装开发依赖：
+
+```powershell
+python -m pip install -e ".[dev]"
+```
+
+运行测试：
+
+```powershell
+python -m pytest
+```
+
+构建本地发布产物：
+
+```powershell
+python -m build
+```
+
+如果你直接在源码仓库里开发，也可以先运行：
+
+```powershell
+scripts\chatlog.bat install --dev
+```
+
+## 贡献说明
+
+欢迎提交 issue 和 PR。开发环境、验证步骤和仓库卫生要求见 [CONTRIBUTING.md](CONTRIBUTING.md)。
+
+本项目只面向用户在自己电脑上浏览和导出自己的微信桌面版本地数据。
 
 ## 后续计划
 

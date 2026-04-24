@@ -22,10 +22,9 @@ from .core import (
     ChatlogError,
     DEFAULT_OUTPUT_BASE,
     MEDIA_EXTRACTOR_VERSION,
-    XWECHAT_ROOT,
     build_account_paths,
     clear_output_cache,
-    discover_account_dirs,
+    describe_search_roots,
     export_chat,
     get_chat_messages,
     get_message_media_file,
@@ -34,8 +33,10 @@ from .core import (
     load_sessions,
     prepare_data,
     resolve_account_dir,
+    resolve_wechat_source,
 )
-from .wechat4_key_probe import get_weixin_pids
+from .wechat4_key_probe import find_matching_account_dir, get_weixin_pids
+from .wechat_paths import XWECHAT_ROOT, candidate_xwechat_roots
 
 
 UI_ROOT = Path(str(files("chatlog_studio").joinpath("webui")))
@@ -65,7 +66,7 @@ def build_parser() -> argparse.ArgumentParser:
     parser.add_argument(
         "--account-dir",
         type=Path,
-        help="Optional account directory under Documents\\xwechat_files.",
+        help="Optional WeChat source directory. Accepts either xwechat_files root or a single account directory.",
     )
     parser.add_argument(
         "--output-base",
@@ -99,17 +100,48 @@ def pick_available_port(host: str, preferred_port: int, attempts: int = 20) -> i
 
 class ChatlogVisualApp:
     def __init__(self, account_dir: Path | None, output_base: Path) -> None:
-        self.account_dir = account_dir.resolve() if account_dir else None
+        self.manual_source_path = account_dir.resolve(strict=False) if account_dir else None
         self.output_base = output_base.resolve()
         self.ui_root = UI_ROOT
         self._tasks: dict[str, TaskState] = {}
         self._tasks_lock = threading.Lock()
         self._busy_accounts: set[str] = set()
         self._account_task_ids: dict[str, str] = {}
+        self._matched_account_cache: tuple[float, tuple[str, ...], str | None] = (0.0, (), None)
+
+    def _clear_matched_account_cache(self) -> None:
+        self._matched_account_cache = (0.0, (), None)
+
+    def browse_wechat_root(self, initial_dir: str | None = None) -> dict[str, object]:
+        fallback_root = self.manual_source_path or XWECHAT_ROOT
+        selected = choose_directory(
+            title="选择微信文件根目录",
+            initial_dir=Path(os.path.expandvars(initial_dir)).expanduser() if initial_dir else fallback_root,
+        )
+        return {"path": str(selected) if selected else None}
+
+    def set_wechat_root(self, source_dir: str | None) -> dict[str, object]:
+        with self._tasks_lock:
+            if self._busy_accounts:
+                raise ChatlogError("cannot change WeChat source directory while a prepare or rebuild task is running")
+
+        if source_dir:
+            source = resolve_wechat_source(Path(os.path.expandvars(source_dir)).expanduser())
+            if not source.account_dirs:
+                raise AccountNotFoundError(f"no account directories found under: {describe_search_roots(source)}")
+            self.manual_source_path = source.requested_path
+        else:
+            self.manual_source_path = None
+        self._clear_matched_account_cache()
+        return self.build_status_payload(None)
+
+    def current_source(self):
+        return resolve_wechat_source(self.manual_source_path)
 
     def list_accounts(self) -> list[dict[str, object]]:
         accounts: list[dict[str, object]] = []
-        for account_dir in discover_account_dirs():
+        source = self.current_source()
+        for account_dir in source.account_dirs:
             paths = build_account_paths(account_dir, output_base=self.output_base)
             accounts.append(
                 {
@@ -121,30 +153,42 @@ class ChatlogVisualApp:
                     "outputRoot": str(paths.output_root),
                 }
             )
-        if self.account_dir and not any(item["path"] == str(self.account_dir) for item in accounts):
-            paths = build_account_paths(self.account_dir, output_base=self.output_base)
-            accounts.insert(
-                0,
-                {
-                    "id": self.account_dir.name,
-                    "name": self.account_dir.name,
-                    "path": str(self.account_dir),
-                    "updatedAt": int(self.account_dir.stat().st_mtime),
-                    "prepared": is_prepared(paths),
-                    "outputRoot": str(paths.output_root),
-                },
-            )
         return accounts
 
+    def _cached_matched_account_path(self, accounts: list[dict[str, object]]) -> str | None:
+        now = time.time()
+        account_paths = tuple(str(account["path"]) for account in accounts)
+        cached_at, cached_accounts, cached_path = self._matched_account_cache
+        if cached_accounts == account_paths and now - cached_at < 2.0:
+            return cached_path
+        matched_dir = find_matching_account_dir([Path(str(account["path"])) for account in accounts], pages=1)
+        matched_path = str(matched_dir) if matched_dir else None
+        self._matched_account_cache = (now, account_paths, matched_path)
+        return matched_path
+
+    def _find_matched_running_account(self, accounts: list[dict[str, object]]) -> dict[str, object] | None:
+        if not get_weixin_pids():
+            return None
+        matched_path = self._cached_matched_account_path(accounts)
+        if matched_path:
+            for account in accounts:
+                if account["path"] == matched_path:
+                    return account
+        return None
+
     def resolve_requested_account(self, account_id: str | None) -> Path:
-        if self.account_dir is not None:
-            return resolve_account_dir(self.account_dir)
+        accounts = self.list_accounts()
         if account_id:
-            for account_dir in discover_account_dirs():
-                if account_id in (account_dir.name, str(account_dir.resolve())):
-                    return account_dir.resolve()
+            for account in accounts:
+                if account_id in (account["id"], account["path"]):
+                    return Path(str(account["path"])).resolve(strict=False)
             raise AccountNotFoundError(f"unknown account: {account_id}")
-        return resolve_account_dir()
+        matched = self._find_matched_running_account(accounts)
+        if matched is not None:
+            return Path(str(matched["path"])).resolve(strict=False)
+        if accounts:
+            return Path(str(accounts[0]["path"])).resolve(strict=False)
+        raise AccountNotFoundError(f"no account directories found under: {describe_search_roots(self.current_source())}")
 
     def require_prepared_paths(self, account_id: str | None):
         account_dir = self.resolve_requested_account(account_id)
@@ -201,15 +245,22 @@ class ChatlogVisualApp:
 
     def build_status_payload(self, account_id: str | None) -> dict[str, object]:
         accounts = self.list_accounts()
+        source = self.current_source()
+        matched_account = self._find_matched_running_account(accounts)
         payload: dict[str, object] = {
             "appName": "Chatlog Studio",
             "xwechatRoot": str(XWECHAT_ROOT),
+            "xwechatRoots": [str(path) for path in candidate_xwechat_roots()],
             "outputBase": str(self.output_base),
             "defaultOutputBase": str(DEFAULT_OUTPUT_BASE),
             "hasRunningWeixin": bool(get_weixin_pids()),
             "accounts": accounts,
             "selectedAccountId": None,
             "selectedAccountPath": None,
+            "manualSourcePath": str(source.requested_path) if source.requested_path else None,
+            "manualSourceKind": source.source_kind if source.requested_path else None,
+            "searchRoots": [str(path) for path in source.search_roots],
+            "matchedAccountId": matched_account["id"] if matched_account else None,
             "prepared": False,
             "stats": {
                 "contacts": 0,
@@ -220,7 +271,7 @@ class ChatlogVisualApp:
             },
         }
 
-        if not accounts and self.account_dir is None:
+        if not accounts:
             return payload
 
         account_dir = self.resolve_requested_account(account_id)
@@ -610,6 +661,12 @@ class ChatlogRequestHandler(BaseHTTPRequestHandler):
             if parsed.path == "/api/output-base/browse":
                 self.send_json(HTTPStatus.OK, self.app.browse_output_base(body.get("initialDir")))
                 return
+            if parsed.path == "/api/wechat-root":
+                self.send_json(HTTPStatus.OK, self.app.set_wechat_root(body.get("sourceDir")))
+                return
+            if parsed.path == "/api/wechat-root/browse":
+                self.send_json(HTTPStatus.OK, self.app.browse_wechat_root(body.get("initialDir")))
+                return
             if parsed.path == "/api/tasks/prepare":
                 force = bool(body.get("force"))
                 self.send_json(HTTPStatus.ACCEPTED, self.app.start_prepare_task(account_id, force))
@@ -742,7 +799,7 @@ def main(argv: list[str] | None = None) -> int:
         if args.host not in {"127.0.0.1", "localhost", "::1"} and not args.allow_remote:
             raise ChatlogError("refusing non-local bind; pass --allow-remote to expose the local web UI")
         if args.account_dir is not None:
-            resolve_account_dir(args.account_dir)
+            resolve_wechat_source(args.account_dir)
 
         port = pick_available_port(args.host, args.port)
         app = ChatlogVisualApp(account_dir=args.account_dir, output_base=args.output_base)

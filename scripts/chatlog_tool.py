@@ -10,5 +10,12 @@ if str(SRC_ROOT) not in sys.path:
 from chatlog_studio.cli import main
 
 
+def _normalized_argv() -> list[str]:
+    argv = list(sys.argv[1:])
+    if argv and argv[0].lower() == "cli":
+        return argv[1:]
+    return argv
+
+
 if __name__ == "__main__":
-    raise SystemExit(main())
+    raise SystemExit(main(_normalized_argv()))

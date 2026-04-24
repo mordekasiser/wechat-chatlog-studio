@@ -84,6 +84,38 @@
               </label>
             </div>
 
+            <div class="account-config">
+              <div class="section-heading compact">
+                <span class="eyebrow">WeChat Data Root</span>
+                <p>
+                  程序会先自动扫描常见位置；如果你的微信数据不在默认文档目录，比如被 OneDrive 接管、放在其他磁盘，或自动发现失败，再手动指定微信文件根目录。选择后会优先按当前已登录微信去匹配对应账号。
+                </p>
+              </div>
+              <label class="field">
+                <span>微信文件根目录</span>
+                <input
+                  id="account-dir-input"
+                  type="text"
+                  placeholder="例如 %USERPROFILE%\\Documents\\xwechat_files"
+                  autocomplete="off"
+                />
+              </label>
+              <div class="path-actions">
+                <button class="ghost-button compact-button" id="browse-account-button" type="button">
+                  选择微信文件目录
+                </button>
+                <button class="ghost-button compact-button" id="apply-account-button" type="button">
+                  使用此目录
+                </button>
+                <button class="ghost-button compact-button" id="reset-account-button" type="button">
+                  恢复自动发现
+                </button>
+              </div>
+              <p class="field-note" id="account-dir-note">
+                推荐直接选择 `xwechat_files` 根目录。也兼容直接选择单个账号目录；如果当前检测到运行中的微信，会优先自动匹配对应账号。
+              </p>
+            </div>
+
             <details class="advanced-panel" id="advanced-panel">
               <summary>高级设置与缓存维护</summary>
               <div class="advanced-body">

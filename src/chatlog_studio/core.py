@@ -1,20 +1,20 @@
 from __future__ import annotations
 import hashlib
+import os
 import re
 import shutil
 import unicodedata
-import os
 from dataclasses import dataclass
 from datetime import datetime
 from pathlib import Path
 from typing import Callable, Iterable
 
 from .wechat4_key_probe import ValidationResult, decrypt_database, find_working_key
+from .wechat_paths import XWECHAT_ROOT, account_message_db_path, candidate_xwechat_roots, is_account_dir
 
 
 PACKAGE_ROOT = Path(__file__).resolve().parent
 DEFAULT_OUTPUT_BASE = Path(os.environ.get("LOCALAPPDATA", str(Path.home() / "AppData" / "Local"))) / "ChatlogStudio"
-XWECHAT_ROOT = Path.home() / "Documents" / "xwechat_files"
 MEDIA_EXTRACTOR_VERSION = "img-v2"
 WECHAT_V4_IMAGE_HEADERS = (b"\x07\x08V1", b"\x07\x08V2")
 
@@ -137,6 +137,14 @@ class MediaFileResult:
     source_path: Path
 
 
+@dataclass(frozen=True)
+class WeChatSource:
+    requested_path: Path | None
+    source_kind: str
+    search_roots: list[Path]
+    account_dirs: list[Path]
+
+
 ProgressCallback = Callable[[int, int, str], None]
 
 RESOURCE_HASH_RE = re.compile(rb"[0-9a-fA-F]{32}")
@@ -160,34 +168,66 @@ VIDEO_SUFFIX_MIME = {key: value for key, value in MEDIA_SUFFIX_MIME.items() if v
 URL_RE = re.compile(r"https?://[^\s<>'\"，。！？、）】》]+", re.IGNORECASE)
 
 
-def discover_account_dirs(root: Path = XWECHAT_ROOT) -> list[Path]:
-    if not root.exists():
-        return []
+def discover_account_dirs(root: Path | None = None) -> list[Path]:
+    roots = [root.expanduser().resolve(strict=False)] if root is not None else candidate_xwechat_roots()
 
-    candidates: list[tuple[float, Path]] = []
-    for child in root.iterdir():
-        if not child.is_dir():
+    candidates: dict[Path, float] = {}
+    for search_root in roots:
+        if not search_root.exists():
             continue
-        message_db = child / "db_storage" / "message" / "message_0.db"
-        if not message_db.exists():
-            continue
-        candidates.append((message_db.stat().st_mtime, child))
+        for child in search_root.iterdir():
+            if not child.is_dir():
+                continue
+            message_db = account_message_db_path(child)
+            if not message_db.exists():
+                continue
+            resolved_child = child.resolve(strict=False)
+            candidates[resolved_child] = max(candidates.get(resolved_child, 0.0), message_db.stat().st_mtime)
 
-    candidates.sort(key=lambda item: item[0], reverse=True)
-    return [item[1] for item in candidates]
+    return [item[0] for item in sorted(candidates.items(), key=lambda item: item[1], reverse=True)]
+
+
+def resolve_wechat_source(source_path: Path | None = None) -> WeChatSource:
+    if source_path is None:
+        roots = candidate_xwechat_roots()
+        return WeChatSource(
+            requested_path=None,
+            source_kind="auto",
+            search_roots=roots,
+            account_dirs=discover_account_dirs(),
+        )
+
+    resolved = source_path.expanduser().resolve(strict=False)
+    if not resolved.exists():
+        raise AccountNotFoundError(f"path does not exist: {resolved}")
+    if not resolved.is_dir():
+        raise AccountNotFoundError(f"path is not a directory: {resolved}")
+    if is_account_dir(resolved):
+        return WeChatSource(
+            requested_path=resolved,
+            source_kind="account",
+            search_roots=[resolved.parent.resolve(strict=False)],
+            account_dirs=[resolved],
+        )
+
+    return WeChatSource(
+        requested_path=resolved,
+        source_kind="root",
+        search_roots=[resolved],
+        account_dirs=discover_account_dirs(resolved),
+    )
+
+
+def describe_search_roots(source: WeChatSource | None = None) -> str:
+    active_source = source or resolve_wechat_source()
+    return ", ".join(str(path) for path in active_source.search_roots)
 
 
 def resolve_account_dir(account_dir: Path | None = None) -> Path:
-    if account_dir is not None:
-        resolved = account_dir.expanduser().resolve()
-        if not (resolved / "db_storage" / "message" / "message_0.db").exists():
-            raise AccountNotFoundError(f"invalid account directory: {resolved}")
-        return resolved
-
-    discovered = discover_account_dirs()
-    if not discovered:
-        raise AccountNotFoundError(f"no account directories found under: {XWECHAT_ROOT}")
-    return discovered[0]
+    source = resolve_wechat_source(account_dir)
+    if source.account_dirs:
+        return source.account_dirs[0]
+    raise AccountNotFoundError(f"no account directories found under: {describe_search_roots(source)}")
 
 
 def build_account_paths(
@@ -274,7 +314,7 @@ def collect_required_databases(account_dir: Path) -> list[Path]:
 
 
 def get_primary_message_db(account_dir: Path) -> Path:
-    db_path = account_dir / "db_storage" / "message" / "message_0.db"
+    db_path = account_message_db_path(account_dir)
     if not db_path.exists():
         raise ChatlogError(f"primary message database not found: {db_path}")
     return db_path

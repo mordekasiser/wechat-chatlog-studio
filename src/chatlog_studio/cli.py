@@ -24,7 +24,7 @@ def build_parser() -> argparse.ArgumentParser:
     parser.add_argument(
         "--account-dir",
         type=Path,
-        help="Optional account directory under Documents\\xwechat_files.",
+        help="Optional WeChat source directory. Accepts either xwechat_files root or a single account directory.",
     )
     parser.add_argument(
         "--output-base",
