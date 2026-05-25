@@ -1,10 +1,20 @@
 # 聊天档案台
 
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
+[![Python 3.10+](https://img.shields.io/badge/Python-3.10%2B-blue.svg)](https://python.org)
+[![Platform: Windows](https://img.shields.io/badge/Platform-Windows-0078D4.svg)](#使用前提)
+
 这是一款在本地电脑上运行、目前支持 Windows 的工具，用于浏览和导出你自己的微信桌面版聊天数据。
 
 [快速开始](#快速开始) · [使用方式](#使用方式) · [项目结构](#项目结构) · [英文说明](README.md)
 
 ---
+
+## 当前状态
+
+聊天档案台仍处于早期测试阶段。它已经可以用于本地试用和兼容性反馈，但不同微信桌面版、Windows 环境和本地数据结构可能会有差异。
+
+建议先用自己已经备份过的数据测试。如果遇到 bug，欢迎在 Issue 中附上微信版本、Windows 版本、错误信息和复现步骤。
 
 ## 为什么做这个项目
 
@@ -21,6 +31,13 @@
 
 它不是公网在线网站。
 程序运行在你自己的电脑上，启动后会在本机打开浏览器页面。
+
+## 适合用来做什么
+
+- 在换电脑、迁移或清理设备前保存重要聊天
+- 把自己的聊天记录导出成更方便浏览和整理的文件
+- 为私有智能体技能实验准备本地对话数据
+- 测试不同微信桌面版数据结构的兼容性并反馈问题
 
 ## 使用前提
 
@@ -185,6 +202,8 @@ scripts\chatlog.bat install --dev
 欢迎提交问题反馈和合并请求。开发环境、验证步骤和仓库卫生要求见 [CONTRIBUTING.md](CONTRIBUTING.md)。
 
 本项目只面向用户在自己电脑上浏览和导出自己的微信桌面版本地数据。
+
+如果这个项目帮到了你，或者你想关注后续修复和更新，欢迎点一个 Star 或 Watch。
 
 ## 后续计划
 

@@ -10,6 +10,12 @@ Local Windows tool for browsing and exporting your own WeChat desktop chat data.
 
 ---
 
+## Current Status
+
+Chatlog Studio is in an early testing stage. It is useful for local experiments and feedback, but WeChat desktop versions and local data layouts can differ across machines.
+
+Please try it first with your own backed-up data. If something breaks, report the WeChat version, Windows version, error message, and reproduction steps.
+
 ## Why This Project Exists
 
 Many new AI Skill projects use chat logs, photos, and personal notes to preserve or recreate someone's tone, memories, and communication style. In practice, WeChat and QQ data can be difficult to export cleanly, and manual copy-paste does not scale.
@@ -25,6 +31,13 @@ Chatlog Studio provides:
 
 It is not a public online website.
 It runs on your own Windows machine and opens a browser locally.
+
+## Good Fit For
+
+- preserving important conversations before device changes or migrations
+- exporting your own chat history into easier-to-review files
+- preparing local conversation data for private AI Skill experiments
+- testing WeChat desktop data compatibility and reporting edge cases
 
 ## Requirements
 
@@ -189,6 +202,8 @@ scripts\chatlog.bat install --dev
 Issues and pull requests are welcome. See [CONTRIBUTING.md](CONTRIBUTING.md) for development setup, verification steps, and repository hygiene rules.
 
 This project is intended for exporting and browsing your own local WeChat desktop data on your own machine.
+
+If the project helps you or you want to track future fixes, a star/watch is appreciated.
 
 ## Roadmap
 
