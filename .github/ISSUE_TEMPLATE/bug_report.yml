@@ -1,0 +1,81 @@
+name: Bug report
+description: Report a compatibility or runtime problem in Chatlog Studio.
+title: "[Bug]: "
+labels: ["bug", "needs-triage"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for testing Chatlog Studio. The project is still in an early testing stage, so detailed environment information helps a lot.
+
+        Please do not upload real chat screenshots, exported private conversations, account IDs, tokens, or sensitive local paths.
+  - type: checkboxes
+    id: safety
+    attributes:
+      label: Safety checklist
+      options:
+        - label: I am testing with my own WeChat desktop data.
+          required: true
+        - label: I have backed up important local data before testing.
+          required: true
+        - label: I removed private chat content, account IDs, and sensitive paths from this report.
+          required: true
+  - type: input
+    id: windows-version
+    attributes:
+      label: Windows version
+      placeholder: "Example: Windows 11 23H2"
+    validations:
+      required: true
+  - type: input
+    id: wechat-version
+    attributes:
+      label: WeChat desktop version
+      placeholder: "Example: 4.x.x"
+    validations:
+      required: true
+  - type: dropdown
+    id: data-location
+    attributes:
+      label: WeChat data location
+      options:
+        - Auto-discovered xwechat_files directory
+        - Manually selected xwechat_files directory
+        - Manually selected single account directory
+        - Other
+    validations:
+      required: true
+  - type: textarea
+    id: steps
+    attributes:
+      label: Steps to reproduce
+      description: List the exact actions that triggered the problem.
+      placeholder: |
+        1. Run ...
+        2. Choose ...
+        3. Click ...
+    validations:
+      required: true
+  - type: textarea
+    id: expected
+    attributes:
+      label: Expected behavior
+    validations:
+      required: true
+  - type: textarea
+    id: actual
+    attributes:
+      label: Actual behavior
+    validations:
+      required: true
+  - type: textarea
+    id: logs
+    attributes:
+      label: Error output or logs
+      description: Paste redacted error text. Do not include private chat content or sensitive paths.
+      render: text
+  - type: textarea
+    id: extra
+    attributes:
+      label: Additional context
+      description: Add anything else that may help reproduce the issue.
